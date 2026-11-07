@@ -2722,6 +2722,7 @@ void GCodeProcessorResult::reset() {
     filament_costs = std::vector<float>(MIN_EXTRUDERS_COUNT, DEFAULT_FILAMENT_COST);
     custom_gcode_per_print_z = std::vector<CustomGCode::Item>();
     spiral_vase_mode = false;
+    has_nonplanar = false;
     layer_filaments.clear();
     filament_change_sequence.clear();
     used_mixed_filaments.clear();
@@ -3824,6 +3825,8 @@ void GCodeProcessor::reset()
     m_options_z_corrector.reset();
 
     m_detect_layer_based_on_tag = false;
+    m_nonplanar_current = false;
+    m_deferred_current = false;
 
     m_seams_count = 0;
     m_g29_time_added = false;
@@ -4432,6 +4435,24 @@ void GCodeProcessor::process_tags(const std::string_view comment, bool producers
         if (m_extrusion_role == erExternalPerimeter)
             m_seams_detector.activate(true);
         m_processing_start_custom_gcode = (m_extrusion_role == erCustom && m_g1_line_id == 0);
+        return;
+    }
+
+    // ; PATH_TASK  (OrcaSlicer Nonplanar): marks the start of a toolpath and tells
+    // whether it is a conformal (nonplanar) top-shell path.
+    // Format: "PATH_TASK id=757 conformal=1 surface=0 source_layer=12 shell_offset=0.400000"
+    // ; PATH_DEFERRED ... / ; PATH_DEFERRED_END (OrcaSlicer Nonplanar): a block printed on a
+    // later layer than the one it belongs to.
+    if (boost::starts_with(comment, "PATH_DEFERRED")) {
+        m_deferred_current = !boost::starts_with(comment, "PATH_DEFERRED_END");
+        return;
+    }
+
+    if (boost::starts_with(comment, "PATH_TASK")) {
+        const bool nonplanar = comment.find("conformal=1") != comment.npos;
+        m_nonplanar_current = nonplanar;
+        if (nonplanar)
+            m_result.has_nonplanar = true;
         return;
     }
 
@@ -7600,6 +7621,10 @@ void GCodeProcessor::store_move_vertex(EMoveType type, EMovePathType path_type, 
         m_object_label_id,
         m_print_z
     });
+
+    // OrcaSlicer Nonplanar: carry the conformal-path flag of the current toolpath.
+    m_result.moves.back().nonplanar = m_nonplanar_current;
+    m_result.moves.back().deferred  = m_deferred_current;
 
     if (type == EMoveType::Seam) {
         m_seams_count++;

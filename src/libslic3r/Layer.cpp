@@ -1,11 +1,18 @@
 #include "Layer.hpp"
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include "ClipperUtils.hpp"
+<<<<<<< 2.5.0
 #include "Polygon.hpp"
 #include "Point.hpp"
 #include "ExPolygon.hpp"
 #include "ExtrusionEntity.hpp"
 #include "Exception.hpp"
 #include "Flow.hpp"
+=======
+#include "Clipper2Utils.hpp"
+>>>>>>> nonplanar
 #include "Print.hpp"
 #include "PrintConfig.hpp"
 #include "ShortestPath.hpp"
@@ -488,6 +495,91 @@ coordf_t Layer::get_sparse_infill_max_void_area()
 size_t Layer::get_extruder_id(unsigned int filament_id) const
 {
     return m_object->print()->get_extruder_id(filament_id);
+}
+
+void
+LayerRegion::remove_nonplanar_slices(SurfaceCollection topNonplanar) {
+    // Nonplanar pieces already homed in this layer belong to another target
+    // surface or shell.  They keep their identity; merging them back into the
+    // planar remainder would silently turn a conformal shell into planar
+    // material.  The caller removes them from the new selection first.
+    Surfaces planar;
+    Surfaces kept_nonplanar;
+    for (const Surface &s : this->slices.surfaces)
+        (s.is_nonplanar() ? kept_nonplanar : planar).push_back(s);
+
+    Polygons removed = to_polygons(topNonplanar.surfaces);
+    polygons_append(removed, to_polygons(kept_nonplanar));
+
+    this->slices.clear();
+    const auto np_t0 = std::chrono::steady_clock::now();
+    ExPolygons np_rest = diff_ex_2(to_polygons(planar), removed);
+    const double np_dt = std::chrono::duration<double>(std::chrono::steady_clock::now() - np_t0).count();
+    if (std::getenv("NONPLANAR_TIME_DEBUG")) {
+        size_t pts = 0; for (const Polygon &pp : removed) pts += pp.points.size();
+        size_t holes = 0; for (const ExPolygon &e : np_rest) holes += e.holes.size();
+        fprintf(stderr, "NPTIME remove %.3fs planar %zu removed %zu (%zu pts, new %zu, kept %zu) -> %zu (%zu holes)\n", np_dt, planar.size(),
+            removed.size(), pts, topNonplanar.surfaces.size(), kept_nonplanar.size(), np_rest.size(), holes);
+    }
+    this->slices.append(std::move(np_rest), stInternal);
+    this->slices.append(std::move(kept_nonplanar));
+}
+
+void
+LayerRegion::merge_nonplanar_shell_slices() {
+    // Strips moved from several source layers into this home layer form one
+    // material shell.  Merge strips of the same target surface and shell so
+    // perimeters and fills are generated for the whole shell region, while
+    // different shells or target surfaces stay separate surfaces.
+    Surfaces out;
+    Surfaces nonplanar;
+    for (Surface &s : this->slices.surfaces)
+        (s.is_nonplanar() ? nonplanar : out).emplace_back(std::move(s));
+    std::stable_sort(nonplanar.begin(), nonplanar.end(), [](const Surface &l, const Surface &r) {
+        if (l.source_surface_id != r.source_surface_id)
+            return l.source_surface_id < r.source_surface_id;
+        return l.distance_to_top < r.distance_to_top;
+    });
+    for (size_t i = 0; i < nonplanar.size();) {
+        size_t j = i + 1;
+        while (j < nonplanar.size() && nonplanar[j].same_nonplanar_shell(nonplanar[i]))
+            ++ j;
+        if (j == i + 1) {
+            out.emplace_back(std::move(nonplanar[i]));
+        } else {
+            Polygons polygons;
+            for (size_t k = i; k < j; ++ k)
+                polygons_append(polygons, to_polygons(nonplanar[k].expolygon));
+            // The topmost shell is a top surface wherever any strip is one.
+            Surface templ(nonplanar[i], ExPolygon());
+            for (size_t k = i; k < j; ++ k)
+                if (nonplanar[k].surface_type == stTopNonplanar)
+                    templ.surface_type = stTopNonplanar;
+            surfaces_append(out, union_safety_offset_ex(polygons), templ);
+        }
+        i = j;
+    }
+    // Edge extension: the union of the surface's facets leaves microscopic holes (slivers
+    // between facets); the perimeter generator wraps a loop around each of them, which pulls
+    // the shell's outer line into a V wherever such a sliver lies near the edge.
+    if (nonplanar_edge_reach(this->layer()->object()->config().nonplanar_edge_fix.value) > 0.) {
+        const double min_hole = scale_(0.1) * scale_(0.1);
+        for (Surface &s : out)
+            if (s.is_nonplanar())
+                s.expolygon.holes.erase(std::remove_if(s.expolygon.holes.begin(), s.expolygon.holes.end(),
+                    [min_hole](const Polygon &h) { return std::abs(h.area()) < min_hole; }), s.expolygon.holes.end());
+    }
+    this->slices.surfaces = std::move(out);
+}
+
+void
+LayerRegion::clear_nonplanar_surfaces() {
+    m_nonplanar_surfaces.clear();
+}
+
+void
+LayerRegion::append_top_nonplanar_slices(SurfaceCollection topNonplanar) {
+    this->slices.append(std::move(topNonplanar));
 }
 
 BoundingBox get_extents(const LayerRegion &layer_region)

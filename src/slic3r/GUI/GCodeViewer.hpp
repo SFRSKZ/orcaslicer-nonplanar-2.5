@@ -218,6 +218,14 @@ private:
     std::array<float, static_cast<size_t>(EMoveType::Count)> m_move_type_distances{};
     //BBS: add only gcode mode
     bool m_only_gcode_in_preview {false};
+    // OrcaSlicer Nonplanar: true when the loaded G-code contains conformal (nonplanar)
+    // paths. Shows the NP marker in the preview.
+    bool m_has_nonplanar {false};
+    // OrcaSlicer Nonplanar view: print time, filament length (m) and weight (g) of the
+    // planar [0], conformal [1] and deferred planar [2] extrusions.
+    std::array<float, 3>  m_np_time{};
+    std::array<double, 3> m_np_len_m{};
+    std::array<double, 3> m_np_g{};
 
     //BBS: extruder dispensing filament
     std::vector<ExtruderFilament> m_left_extruder_filament;

@@ -28,10 +28,14 @@
 #include "GCode/ThumbnailData.hpp"
 #include "GCode/GCodeProcessor.hpp"
 #include "MultiMaterialSegmentation.hpp"
+<<<<<<< 2.5.0
 #include "BeltBrim.hpp"
 #include "BeltTransform.hpp"
 #include "ObjectID.hpp"
 #include "TriangleSelector.hpp"
+=======
+#include "NonplanarSurface.hpp"
+>>>>>>> nonplanar
 #include "libslic3r.h"
 
 #include <Eigen/Geometry>
@@ -123,6 +127,8 @@ enum PrintStep {
 enum PrintObjectStep {
     posSlice, posPerimeters,posEstimateCurledExtrusions, posPrepareInfill,
     posInfill, posIroning, posContouring, posSupportMaterial, posSimplifyPath, posSimplifySupportPath,
+    // Nonplanar projection of conformal shells (runs at the end of the infill step).
+    posNonplanarProjection,
     // BBS
     posDetectOverhangsForLift,
     posSimplifyWall, posSimplifyInfill,
@@ -375,6 +381,7 @@ public:
     ConstSupportLayerPtrsAdaptor support_layers() const { return ConstSupportLayerPtrsAdaptor(&m_support_layers); }
     const Transform3d&           trafo() const          { return m_trafo; }
     // Trafo with the center_offset() applied after the transformation, to center the object in XY before slicing.
+    NonplanarSurfaces            nonplanar_surfaces()   { return m_nonplanar_surfaces; }
     Transform3d                  trafo_centered() const
         { Transform3d t = this->trafo(); t.pretranslate(Vec3d(- unscale<double>(m_center_offset.x()), - unscale<double>(m_center_offset.y()), 0)); return t; }
     // trafo_centered() with the belt pre-slice transforms applied: the frame the layers were sliced in (Layer::slice_z).
@@ -603,6 +610,7 @@ private:
     std::vector<std::set<int>> detect_extruder_geometric_unprintables() const;
 
     void slice_volumes();
+<<<<<<< 2.5.0
     // Belt mode: shift the sliced layer grid (layer print_z and the belt floor
     // clipping shift) by delta, used by Print::_align_belt_purge_layers() to
     // snap the purge prism's layers onto the printed objects' layer grid.
@@ -636,6 +644,13 @@ private:
     // regenerate per-layer content over m_layers only, so a stale stash would
     // otherwise be restored on top of fresh content); the plan calls it too.
     void   belt_undo_purge_plan() { belt_restore_dropped_fills(); belt_restore_truncated_layers(); }
+=======
+    // Nonplanar target surfaces (ported from PrusaSlicer Nonplanar).
+    bool check_nonplanar_collisions(NonplanarSurface &surface);
+    void find_nonplanar_surfaces();
+    void detect_nonplanar_surfaces();
+    void project_nonplanar_surfaces();
+>>>>>>> nonplanar
     //BBS
     ExPolygons _shrink_contour_holes(double contour_delta, double hole_delta, const ExPolygons& polys) const;
     // BBS
@@ -703,6 +718,7 @@ private:
     // this is set to true when LayerRegion->slices is split in top/internal/bottom
     // so that next call to make_perimeters() performs a union() before computing loops
     bool                    				m_typed_slices = false;
+    NonplanarSurfaces                       m_nonplanar_surfaces;
 
     FillAdaptive::RegionOctrees             m_adaptive_fill_octrees;
     std::vector<BoundingBox>                m_separated_body_bboxes;

@@ -1368,6 +1368,25 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionFloat,               support_ironing_spacing))
     ((ConfigOptionFloat,               xy_hole_compensation))
     ((ConfigOptionFloat,               xy_contour_compensation))
+    // Nonplanar top shells (ported from PrusaSlicer Nonplanar).
+    ((ConfigOptionBool,                use_nonplanar_layers))
+    ((ConfigOptionFloat,               nonplanar_layers_angle))
+    ((ConfigOptionFloat,               nonplanar_layers_height))
+    ((ConfigOptionBool,                nonplanar_edge_fix))
+    ((ConfigOptionBool,                nonplanar_ironing))
+    ((ConfigOptionPercent,             nonplanar_ironing_flow))
+    ((ConfigOptionFloat,               nonplanar_ironing_spacing))
+    ((ConfigOptionFloat,               nonplanar_ironing_max_angle))
+    ((ConfigOptionFloat,               nonplanar_ironing_z_offset))
+    ((ConfigOptionPercent,             nonplanar_ironing_slope_press))
+    ((ConfigOptionBool,                nonplanar_ironing_cross))
+    ((ConfigOptionFloat,               nonplanar_ironing_tip_diameter))
+    ((ConfigOptionFloat,               nonplanar_ironing_min_area))
+    ((ConfigOptionBool,                nonplanar_flow_by_thickness))
+    ((ConfigOptionBool,                set_nonplanar_top_surface_flow_ratio))
+    ((ConfigOptionFloat,               nonplanar_top_surface_flow_ratio))
+    ((ConfigOptionBool,                set_nonplanar_top_surface_direction))
+    ((ConfigOptionFloat,               nonplanar_top_surface_direction))
     ((ConfigOptionBool,                flush_into_objects))
     // BBS
     ((ConfigOptionBool,                flush_into_infill))
@@ -1647,6 +1666,8 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionBool, zaa_dont_alternate_fill_direction))
     ((ConfigOptionFloat, zaa_min_z))
     ((ConfigOptionFloat, zaa_minimize_perimeter_height))
+    // OrcaSlicer Nonplanar: nonplanar top shells in this region (a modifier can turn them off or on)
+    ((ConfigOptionBool, nonplanar_region_enabled))
     )
 
 PRINT_CONFIG_CLASS_DEFINE(
@@ -2067,8 +2088,16 @@ PRINT_CONFIG_CLASS_DERIVED_DEFINE(
     ((ConfigOptionBool,               ooze_prevention))
     ((ConfigOptionString,             filename_format))
     ((ConfigOptionStrings,            post_process))
+<<<<<<< 2.5.0
     ((ConfigOptionStrings,            slicing_pipeline_plugin))
     ((ConfigOptionString,             print_plugin_config_overrides))
+=======
+    // OrcaSlicer Nonplanar: G-code clean-up (GCode/NonplanarPostfix)
+    ((ConfigOptionBool,               nonplanar_gcode_cleanup))
+    ((ConfigOptionBool,               nonplanar_ironing_last))
+    ((ConfigOptionFloat,              nonplanar_dot_min_length))
+    ((ConfigOptionFloat,              nonplanar_travel_clearance))
+>>>>>>> nonplanar
     ((ConfigOptionString,             printer_model))
     ((ConfigOptionFloat,              resolution))
     ((ConfigOptionFloats,             retraction_minimum_travel))
@@ -2147,8 +2176,12 @@ PRINT_CONFIG_CLASS_DERIVED_DEFINE(
     ((ConfigOptionFloatsNullable,     nozzle_volume))
     ((ConfigOptionPoints,             start_end_points))
     ((ConfigOptionEnum<TimelapseType>,    timelapse_type))
+<<<<<<< 2.5.0
     // Corexy farthest-point timelapse (default false → inert for existing printers)
     ((ConfigOptionBool,               farthest_point_timelapse))
+=======
+    ((ConfigOptionBool,               timelapse_enabled))
+>>>>>>> nonplanar
     ((ConfigOptionString,             thumbnails))
     // BBS: move from PrintObjectConfig
     ((ConfigOptionBool, independent_support_layer_height))

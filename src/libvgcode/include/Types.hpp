@@ -109,6 +109,8 @@ enum class EViewType : uint8_t
     // ORCA: Add Jerk visualization support
     Jerk,
     Tool,
+    // OrcaSlicer Nonplanar: planar / conformal / deferred paths in their own colors
+    Nonplanar,
     COUNT
 };
 

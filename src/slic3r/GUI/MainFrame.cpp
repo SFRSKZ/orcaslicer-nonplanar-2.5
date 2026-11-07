@@ -3709,6 +3709,14 @@ void MainFrame::init_menubar_as_editor()
         [this](wxCommandEvent&) { run_calibration(CalibKind::Retraction); }, "", nullptr,
         [this]() {return m_plater->is_view3D_shown();; }, this);
 
+    // OrcaSlicer Nonplanar: ironing height
+    append_menu_item(m_topbar->GetCalibMenu(), wxID_ANY, _L("Nonplanar ironing height"), _L("Nonplanar ironing height"),
+        [this](wxCommandEvent&) {
+            NonplanarIroning_Test_Dlg dlg((wxWindow*)this, wxID_ANY, m_plater);
+            dlg.ShowModal();
+        }, "", nullptr,
+        [this]() {return m_plater->is_view3D_shown();; }, this);
+
     // Cornering
     append_menu_item(m_topbar->GetCalibMenu(), wxID_ANY, _L("Cornering"), _L("Cornering calibration"),
         [this](wxCommandEvent&) { run_calibration(CalibKind::Cornering); }, "", nullptr,
@@ -3813,6 +3821,14 @@ void MainFrame::init_menubar_as_editor()
     // Retraction
     append_menu_item(calib_menu, wxID_ANY, _L("Retraction"), _L("Retraction"),
         [this](wxCommandEvent&) { run_calibration(CalibKind::Retraction); }, "", nullptr,
+        [this]() {return m_plater->is_view3D_shown();; }, this);
+
+    // OrcaSlicer Nonplanar: ironing height
+    append_menu_item(calib_menu, wxID_ANY, _L("Nonplanar ironing height"), _L("Nonplanar ironing height"),
+        [this](wxCommandEvent&) {
+            NonplanarIroning_Test_Dlg dlg((wxWindow*)this, wxID_ANY, m_plater);
+            dlg.ShowModal();
+        }, "", nullptr,
         [this]() {return m_plater->is_view3D_shown();; }, this);
 
     // Cornering

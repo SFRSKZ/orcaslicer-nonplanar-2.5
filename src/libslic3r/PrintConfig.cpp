@@ -5255,6 +5255,195 @@ void PrintConfigDef::init_fff_params()
     def->mode     = comExpert;
     def->set_default_value(new ConfigOptionFloat(0));
 
+    def = this->add("use_nonplanar_layers", coBool);
+    def->label = L("Use nonplanar layers");
+    def->category = L("Quality");
+    def->tooltip = L("Generate nonplanar layers on top of the object. Top surfaces of the object are then printed at 50 mm/s at most.");
+    def->mode = comAdvanced;
+    // Nonplanar build: on by default with the A1 mini limits below (user decision 2026-10-23).
+    def->set_default_value(new ConfigOptionBool(true));
+
+    def = this->add("nonplanar_layers_angle", coFloat);
+    def->label = L("Maximum nonplanar angle");
+    def->category = L("Quality");
+    def->tooltip = L("The maximum angle the printer can print without collisions.");
+    def->sidetext = u8"°";	// degrees, don't need translation
+    def->min = 0;
+    // Upper limit of the tested hotend (user decision 2026-10-29).
+    def->max = 12;
+    def->mode = comAdvanced;
+    // Bambu Lab A1 mini print test: 12 degrees (15 degrees rubs, 2026-10-23).
+    def->set_default_value(new ConfigOptionFloat(12.0));
+
+    def = this->add("nonplanar_layers_height", coFloat);
+    def->label = L("Maximum nonplanar height");
+    def->category = L("Quality");
+    def->tooltip = L("The maximum height the printer can print without collisions.");
+    def->sidetext = L("mm");
+    def->min = 0;
+    // Upper limit of the tested hotend (user decision 2026-10-29).
+    def->max = 5;
+    def->mode = comAdvanced;
+    // Bambu Lab A1 mini: 5 mm height span.
+    def->set_default_value(new ConfigOptionFloat(5.0));
+
+    def = this->add("nonplanar_edge_fix", coBool);
+    def->label = L("Extend nonplanar shell to the edge");
+    def->category = L("Quality");
+    def->tooltip = L("Where the nonplanar top shell stops short of the outer wall (a steep edge or fillet), "
+                     "the thin planar strip left between the shell and the wall is printed as part of the shell, "
+                     "so the shell's outer line follows the model's outline without notches. "
+                     "Where the shell already reaches the wall nothing is changed.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(true));
+
+    // Nonplanar ironing: the flat nozzle tip is placed on the highest surface point
+    // under it, so on a slope only its uphill edge touches and nothing is gouged.
+    def = this->add("nonplanar_ironing", coBool);
+    def->label = L("Nonplanar ironing");
+    def->category = L("Quality");
+    def->tooltip = L("Iron the visible nonplanar top shell along the surface with a very low flow. "
+                     "The nozzle tip never goes below the surface: on a slope only its uphill edge touches.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(false));
+
+    def = this->add("nonplanar_ironing_flow", coPercent);
+    def->label = L("Nonplanar ironing flow");
+    def->category = L("Quality");
+    def->tooltip = L("The amount of material to extrude during nonplanar ironing, relative to the flow of the normal layer height.");
+    def->sidetext = "%";
+    def->ratio_over = "layer_height";
+    def->min = 0;
+    def->max = 15;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionPercent(4));
+
+    def = this->add("nonplanar_ironing_spacing", coFloat);
+    def->label = L("Nonplanar ironing line spacing");
+    def->category = L("Quality");
+    def->tooltip = L("The distance between the lines of nonplanar ironing.");
+    def->sidetext = L("mm");
+    def->min = 0.05;
+    def->max = 0.3;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionFloat(0.1));
+
+    def = this->add("nonplanar_ironing_max_angle", coFloat);
+    def->label = L("Nonplanar ironing maximum angle");
+    def->category = L("Quality");
+    def->tooltip = L("Surface parts steeper than this are not ironed: there only a thin edge of the nozzle tip would touch.");
+    def->sidetext = u8"°";	// degrees, don't need translation
+    def->min = 0;
+    def->max = 12;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionFloat(8.0));
+
+    def = this->add("nonplanar_ironing_z_offset", coFloat);
+    def->label = L("Nonplanar ironing height offset");
+    def->category = L("Quality");
+    def->tooltip = L("Height of the nozzle tip above the highest surface point under it. Negative values press into the surface.");
+    def->sidetext = L("mm");
+    def->min = -0.03;
+    def->max = 0.05;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionFloat(0.02));
+
+    def = this->add("nonplanar_ironing_slope_press", coPercent);
+    def->label = L("Nonplanar ironing slope press");
+    def->category = L("Quality");
+    def->tooltip = L("On a slope the flat nozzle tip only touches with its uphill edge and its middle stays above the surface. "
+                     "This lowers the tip by this share of that gap so the slopes are ironed too; flat parts are not changed. "
+                     "The press is never more than 0.05 mm.");
+    def->sidetext = "%";
+    def->min = 0;
+    def->max = 100;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionPercent(0));
+
+    def = this->add("nonplanar_ironing_cross", coBool);
+    def->label = L("Nonplanar ironing cross pass");
+    def->category = L("Quality");
+    def->tooltip = L("Iron the nonplanar surface a second time with the lines turned by 90 degrees. "
+                     "The second pass flattens the ridges the first one leaves; ironing takes twice as long.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(false));
+
+    def = this->add("nonplanar_flow_by_thickness", coBool);
+    def->label = L("Nonplanar flow by real thickness");
+    def->category = L("Quality");
+    def->tooltip = L("Where a nonplanar shell lies on the steps of the planar layers below, the gap under the nozzle "
+                     "is thinner than the shell. With this on, the extrusion follows the real gap (down to 30 %), "
+                     "so the thin spots are not over-extruded.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(true));
+
+    def = this->add("nonplanar_ironing_tip_diameter", coFloat);
+    def->label = L("Nonplanar ironing nozzle tip diameter");
+    def->category = L("Quality");
+    def->tooltip = L("Outer diameter of the flat face at the tip of the nozzle, the part that touches the surface "
+                     "while ironing. It differs between printers and nozzles: measure it with a caliper. "
+                     "Too small a value lets the tip dig into slopes; too large a value irons the slopes less.");
+    def->sidetext = L("mm");
+    def->min = 0.4;
+    def->max = 4.;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionFloat(1.1));
+
+    def = this->add("nonplanar_ironing_min_area", coFloat);
+    def->label = L("Nonplanar ironing minimum area");
+    def->category = L("Quality");
+    def->tooltip = L("Ironing areas smaller than this are not ironed. A small area gains little from ironing, "
+                     "but with ironing at the end of the layer each ironing filament costs a tool change. 0 irons every area.");
+    def->sidetext = L("mm²");
+    def->min = 0;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionFloat(2.));
+
+    def = this->add("nonplanar_region_enabled", coBool);
+    def->label = L("Nonplanar in this region");
+    def->category = L("Quality");
+    def->tooltip = L("Off: the top shells of this region stay planar although nonplanar layers are enabled for the object. "
+                     "Add it to a modifier to keep nonplanar shells out of the modifier's volume, or turn it off for the "
+                     "object and on in a modifier to have nonplanar shells only there.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(true));
+
+    def = this->add("set_nonplanar_top_surface_flow_ratio", coBool);
+    def->label = L("Set nonplanar top surface flow ratio");
+    def->category = L("Quality");
+    def->tooltip = L("Use a separate flow ratio for the top surface lines of the nonplanar top shell. "
+                     "Planar top surfaces keep the top surface flow ratio.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(false));
+
+    def = this->add("set_nonplanar_top_surface_direction", coBool);
+    def->label = L("Set nonplanar top surface direction");
+    def->category = L("Quality");
+    def->tooltip = L("Use a fixed line direction for the nonplanar top shell instead of the solid infill direction. "
+                     "The nonplanar shells below it alternate by 90 degrees.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(false));
+
+    def = this->add("nonplanar_top_surface_direction", coFloat);
+    def->label = L("Nonplanar top surface direction");
+    def->category = L("Quality");
+    def->tooltip = L("Line direction of the nonplanar top shell, in the same convention as the solid infill direction.");
+    def->sidetext = u8"°";	// degrees, don't need translation
+    def->min = 0;
+    def->max = 360;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionFloat(45));
+
+    def = this->add("nonplanar_top_surface_flow_ratio", coFloat);
+    def->label = L("Nonplanar top surface flow ratio");
+    def->category = L("Quality");
+    def->tooltip = L("Flow ratio of the top surface lines of the nonplanar top shell, used instead of the top surface flow ratio. "
+                     "The actual flow is calculated by multiplying this value with the filament flow ratio, and if set, the object's flow ratio.");
+    def->min = 0;
+    def->max = 2;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionFloat(1));
+
     def = this->add("zaa_enabled", coBool);
     def->label    = L("Z contouring enabled");
     def->category = L("Quality");
@@ -5982,6 +6171,48 @@ void PrintConfigDef::init_fff_params()
     def->mode = comAdvanced;
     def->set_default_value(new ConfigOptionBool(false));
     
+    // OrcaSlicer Nonplanar: G-code clean-up after the nonplanar output (GCode/NonplanarPostfix)
+    def = this->add("nonplanar_gcode_cleanup", coBool);
+    def->label = L("Clean up nonplanar G-code");
+    def->category = L("Quality");
+    def->tooltip = L("Cleans the G-code of prints with nonplanar layers: removes the lifts that go nowhere "
+                     "between pieces of one path (each landing leaves a dot), leaves out tiny extrusion dots and "
+                     "lifts travels that would pass too close over another filament.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(true));
+
+    def = this->add("nonplanar_ironing_last", coBool);
+    def->label = L("Nonplanar ironing last, each filament");
+    def->category = L("Quality");
+    def->tooltip = L("In prints with more than one filament, the nonplanar ironing waits until every filament has printed "
+                     "the layer; then each filament irons its own area. The ironed surface is no longer pressed by the "
+                     "other filament printed next to it. Costs up to two extra filament changes on the layers with ironing.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(true));
+
+    def = this->add("nonplanar_dot_min_length", coFloat);
+    def->label = L("Leave out extrusions shorter than");
+    def->category = L("Quality");
+    def->tooltip = L("A piece of extrusion between two travels that is shorter than this is not printed; "
+                     "such pieces only leave a dot. 0 turns this off.");
+    def->sidetext = L("mm");
+    def->min = 0;
+    def->max = 5;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionFloat(0.3));
+
+    def = this->add("nonplanar_travel_clearance", coFloat);
+    def->label = L("Travel clearance over other filament");
+    def->category = L("Quality");
+    def->tooltip = L("A travel that passes over another filament's material with less than this distance "
+                     "between the nozzle and that material is lifted to this height above it, so the nozzle does not "
+                     "drag one color over the other. 0 turns this off.");
+    def->sidetext = L("mm");
+    def->min = 0;
+    def->max = 5;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionFloat(0.8));
+
     def = this->add("post_process", coStrings);
     def->label = L("Post-processing Scripts");
     def->tooltip = L("If you want to process the output G-code through custom scripts, "
@@ -6924,6 +7155,13 @@ void PrintConfigDef::init_fff_params()
     def->max = 1;
     def->set_default_value(new ConfigOptionFloat(0));
     def->mode = comAdvanced;
+
+    def = this->add("timelapse_enabled", coBool);
+    def->label = L("Enable timelapse");
+    def->tooltip = L("Insert the printer's timelapse G-code (snapshot moves) after each layer. "
+                     "Off by default in this build (user decision 2026-10-23); never inserted for objects with nonplanar layers.");
+    def->mode = comSimple;
+    def->set_default_value(new ConfigOptionBool(false));
 
     def = this->add("timelapse_type", coEnum);
     def->label = L("Timelapse");

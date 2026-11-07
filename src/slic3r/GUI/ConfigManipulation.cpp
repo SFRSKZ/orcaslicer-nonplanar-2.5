@@ -1229,6 +1229,9 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig *config, in
     bool have_avoid_crossing_perimeters = config->opt_bool("reduce_crossing_wall");
     toggle_line("max_travel_detour_distance", have_avoid_crossing_perimeters, -1, _L("Enable avoiding crossing walls to edit the maximum travel detour distance."));
 
+    toggle_line("nonplanar_top_surface_flow_ratio", config->opt_bool("set_nonplanar_top_surface_flow_ratio"));
+    toggle_line("nonplanar_top_surface_direction", config->opt_bool("set_nonplanar_top_surface_direction"));
+
     bool has_set_other_flow_ratios = config->opt_bool("set_other_flow_ratios");
     for (auto el : {"first_layer_flow_ratio", "outer_wall_flow_ratio", "inner_wall_flow_ratio", "overhang_flow_ratio", "sparse_infill_flow_ratio", "internal_solid_infill_flow_ratio", "gap_fill_flow_ratio", "support_flow_ratio", "support_interface_flow_ratio"})
         toggle_line(el, has_set_other_flow_ratios, -1, _L("Enable setting other flow ratios to use this setting."));
@@ -1364,7 +1367,28 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig *config, in
     toggle_line("infill_overhang_angle", config->opt_enum<InfillPattern>("sparse_infill_pattern") == InfillPattern::ipLateralHoneycomb, -1, _L("Select the Lateral Honeycomb sparse infill pattern to use this setting."));
 
     std::string printer_type = wxGetApp().preset_bundle->printers.get_edited_preset().get_printer_type(wxGetApp().preset_bundle);
+<<<<<<< 2.5.0
     toggle_line("enable_wrapping_detection", DevPrinterConfigUtil::support_wrapping_detection(printer_type), -1, _L("The selected printer does not support wrapping detection."));
+=======
+    toggle_line("enable_wrapping_detection", DevPrinterConfigUtil::support_wrapping_detection(printer_type));
+
+    // Nonplanar: the edge extension and the nonplanar ironing work on nonplanar top
+    // shells, so they are only meaningful while nonplanar layers are enabled.
+    const bool nonplanar_on = config->has("use_nonplanar_layers") && config->opt_bool("use_nonplanar_layers");
+    toggle_line("nonplanar_edge_fix", nonplanar_on);
+    // A part or modifier has no use_nonplanar_layers of its own: there the line always shows.
+    toggle_line("nonplanar_region_enabled", nonplanar_on || ! config->has("use_nonplanar_layers"));
+    toggle_line("nonplanar_ironing", nonplanar_on);
+    const bool nonplanar_ironing_on = nonplanar_on && config->has("nonplanar_ironing") && config->opt_bool("nonplanar_ironing");
+    for (const char *key : { "nonplanar_ironing_flow", "nonplanar_ironing_spacing", "nonplanar_ironing_max_angle", "nonplanar_ironing_z_offset", "nonplanar_ironing_slope_press", "nonplanar_ironing_cross", "nonplanar_ironing_tip_diameter", "nonplanar_ironing_min_area" })
+        toggle_line(key, nonplanar_ironing_on);
+    toggle_line("nonplanar_gcode_cleanup", nonplanar_on);
+    toggle_line("nonplanar_flow_by_thickness", nonplanar_on);
+    toggle_line("nonplanar_ironing_last", nonplanar_ironing_on);
+    const bool cleanup_on = nonplanar_on && config->has("nonplanar_gcode_cleanup") && config->opt_bool("nonplanar_gcode_cleanup");
+    toggle_line("nonplanar_dot_min_length", cleanup_on);
+    toggle_line("nonplanar_travel_clearance", cleanup_on);
+>>>>>>> nonplanar
 }
 
 void ConfigManipulation::update_print_sla_config(DynamicPrintConfig* config, const bool is_global_config/* = false*/)

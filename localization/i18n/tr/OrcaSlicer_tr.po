@@ -39140,6 +39140,7 @@ msgstr ""
 # AI Translated
 #, c-format, boost-format
 #~ msgid ""
+<<<<<<< 2.5.0
 #~ "Plugin \"%s\" is requesting to create the following file:\n"
 #~ "%s"
 #~ msgid_plural ""
@@ -39174,3 +39175,138 @@ msgstr ""
 # AI Translated
 #~ msgid "import SVG failed: could not parse imported svg data."
 #~ msgstr "SVG içe aktarma başarısız oldu: içe aktarılan SVG verileri ayrıştırılamadı."
+=======
+#~ "Cannot print multiple filaments which have large difference of "
+#~ "temperature together. Otherwise, the extruder and nozzle may be blocked "
+#~ "or damaged during printing"
+#~ msgstr ""
+#~ "Sıcaklık farkı çok büyük olan birden fazla filament aynı anda basılamaz. "
+#~ "Aksi takdirde ekstruder ve nozul baskı sırasında tıkanabilir veya zarar "
+#~ "görebilir"
+
+msgid "Nonplanar edge fix"
+msgstr "Nonplanar kenar düzeltmesi"
+
+msgid "Extend the nonplanar top shells to the model's outer edge so no gap or notch is left where planar layers meet the nonplanar surface."
+msgstr "Nonplanar üst kabukları modelin dış kenarına kadar uzatır; böylece düzlemsel katmanların nonplanar yüzeyle buluştuğu yerde boşluk veya çentik kalmaz."
+
+msgid "Nonplanar ironing"
+msgstr "Nonplanar ütüleme"
+
+msgid "Iron the visible nonplanar top shell along the surface with a very low flow. The nozzle tip never goes below the surface: on a slope only its uphill edge touches."
+msgstr "Görünen nonplanar üst kabuğu, yüzeyi izleyerek çok düşük akışla ütüler. Nozül ucu hiçbir zaman yüzeyin altına inmez: eğimde ucun yalnızca yokuş yukarı kenarı değer."
+
+msgid "Nonplanar ironing flow"
+msgstr "Nonplanar ütüleme akışı"
+
+msgid "The amount of material to extrude during nonplanar ironing, relative to the flow of the normal layer height."
+msgstr "Nonplanar ütülemede verilecek malzeme miktarı; normal katman yüksekliğindeki akışa göre."
+
+msgid "Nonplanar ironing line spacing"
+msgstr "Nonplanar ütüleme çizgi aralığı"
+
+msgid "The distance between the lines of nonplanar ironing."
+msgstr "Nonplanar ütüleme çizgileri arasındaki mesafe."
+
+msgid "Nonplanar ironing maximum angle"
+msgstr "Nonplanar ütüleme en büyük açısı"
+
+msgid "Surface parts steeper than this are not ironed: there only a thin edge of the nozzle tip would touch."
+msgstr "Bundan daha dik yüzey kısımları ütülenmez: oralarda nozül ucunun yalnızca ince bir kenarı değerdi."
+
+msgid "Nonplanar ironing height offset"
+msgstr "Nonplanar ütüleme yükseklik payı"
+
+msgid "Height of the nozzle tip above the highest surface point under it. Negative values press into the surface."
+msgstr "Nozül ucunun, altındaki en yüksek yüzey noktasının ne kadar üstünde duracağı. Eksi değerler yüzeye bastırır."
+
+msgid "Nonplanar ironing slope press"
+msgstr "Nonplanar ütüleme eğim baskısı"
+
+msgid "On a slope the flat nozzle tip only touches with its uphill edge and its middle stays above the surface. This lowers the tip by this share of that gap so the slopes are ironed too; flat parts are not changed. The press is never more than 0.05 mm."
+msgstr "Eğimli yüzeyde nozzle'ın düz ucu yüzeye yalnızca yokuş yukarı kenarıyla değer, ortası yüzeyin üstünde kalır. Bu ayar ucu bu boşluğun bu oranı kadar indirir, böylece yamaçlar da ütülenir; düz yerler değişmez. Baskı hiçbir zaman 0,05 mm'yi geçmez."
+
+msgid "Extend nonplanar shell to the edge"
+msgstr "Nonplanar kabuğu kenara uzat"
+
+msgid "Where the nonplanar top shell stops short of the outer wall (a steep edge or fillet), the thin planar strip left between the shell and the wall is printed as part of the shell, so the shell's outer line follows the model's outline without notches. Where the shell already reaches the wall nothing is changed."
+msgstr "Nonplanar üst kabuk dış duvara kadar ulaşamadığında (dik kenar ya da pah), kabukla duvar arasında kalan ince düz şerit kabuğun parçası olarak basılır; böylece kabuğun dış çizgisi modelin dış hattını çentiksiz takip eder. Kabuk duvara zaten ulaşıyorsa hiçbir şey değişmez."
+
+msgid "Nonplanar ironing cross pass"
+msgstr "Nonplanar ütüleme çapraz geçiş"
+
+msgid "Iron the nonplanar surface a second time with the lines turned by 90 degrees. The second pass flattens the ridges the first one leaves; ironing takes twice as long."
+msgstr "Nonplanar yüzeyi çizgileri 90 derece döndürerek ikinci kez ütüler. İkinci geçiş, ilkinin bıraktığı sırtları ezer; ütüleme iki kat uzun sürer."
+
+msgid "Nonplanar ironing nozzle tip diameter"
+msgstr "Nonplanar ütüleme nozzle uç çapı"
+
+msgid "Outer diameter of the flat face at the tip of the nozzle, the part that touches the surface while ironing. It differs between printers and nozzles: measure it with a caliper. Too small a value lets the tip dig into slopes; too large a value irons the slopes less."
+msgstr "Nozzle ucundaki düz yüzeyin dış çapı, ütülerken yüzeye değen kısım. Yazıcıya ve nozzle'a göre değişir: kumpasla ölç. Çok küçük girilirse uç yamaçlara gömülür, çok büyük girilirse yamaçlar daha az ütülenir."
+
+msgid "Nonplanar"
+msgstr "Nonplanar"
+
+msgid "Deferred planar"
+msgstr "Ertelenmiş düzlemsel"
+
+msgid "Clean up nonplanar G-code"
+msgstr "Nonplanar G-code temizliği"
+
+msgid "Cleans the G-code of prints with nonplanar layers: removes the lifts that go nowhere between pieces of one path (each landing leaves a dot), leaves out tiny extrusion dots and lifts travels that would pass too close over another filament."
+msgstr "Nonplanar katmanlı baskıların G-code'unu temizler: bir yolun parçaları arasındaki hiçbir yere gitmeyen kalkışları siler (her inişte nokta kalır), küçük ekstrüzyon noktalarını basmaz ve başka bir filamentin üstünden çok yakın geçen seyahatleri yukarı kaldırır."
+
+msgid "Leave out extrusions shorter than"
+msgstr "Şundan kısa ekstrüzyonları basma"
+
+msgid "A piece of extrusion between two travels that is shorter than this is not printed; such pieces only leave a dot. 0 turns this off."
+msgstr "İki seyahat arasındaki bundan kısa bir ekstrüzyon parçası basılmaz; böyle parçalar sadece nokta bırakır. 0 kapatır."
+
+msgid "Travel clearance over other filament"
+msgstr "Diğer filament üstünde seyahat boşluğu"
+
+msgid "A travel that passes over another filament's material with less than this distance between the nozzle and that material is lifted to this height above it, so the nozzle does not drag one color over the other. 0 turns this off."
+msgstr "Başka bir filamentin malzemesinin üstünden nozzle ile malzeme arasında bundan az mesafeyle geçen seyahat, malzemenin bu kadar üstüne kaldırılır; böylece nozzle bir rengi diğerinin üstüne sürüklemez. 0 kapatır."
+
+msgid "Nonplanar flow by real thickness"
+msgstr "Nonplanar akışı gerçek kalınlığa göre"
+
+msgid "Where a nonplanar shell lies on the steps of the planar layers below, the gap under the nozzle is thinner than the shell. With this on, the extrusion follows the real gap (down to 30 %), so the thin spots are not over-extruded."
+msgstr "Nonplanar kabuk alttaki düzlemsel katmanların basamaklarına oturduğunda nozzle altındaki boşluk kabuktan incedir. Bu açıkken ekstrüzyon gerçek boşluğa göre azalır (en fazla %30'a kadar), böylece ince yerlerde fazla plastik basılmaz."
+
+msgid "Nonplanar ironing last, each filament"
+msgstr "Nonplanar ütüleme en sonda, her filament kendisi"
+
+msgid "In prints with more than one filament, the nonplanar ironing waits until every filament has printed the layer; then each filament irons its own area. The ironed surface is no longer pressed by the other filament printed next to it. Costs up to two extra filament changes on the layers with ironing."
+msgstr "Birden fazla filamentli baskılarda nonplanar ütüleme, katmanı bütün filamentler basana kadar bekler; sonra her filament kendi alanını ütüler. Ütülenen yüzey yanına sonradan basılan diğer filament tarafından ezilmez. Ütüleme olan katmanlarda en fazla iki fazladan filament değişimi gerekir."
+
+msgid "Nonplanar ironing minimum area"
+msgstr "Nonplanar ütüleme en küçük alan"
+
+msgid "Ironing areas smaller than this are not ironed. A small area gains little from ironing, but with ironing at the end of the layer each ironing filament costs a tool change. 0 irons every area."
+msgstr "Bundan küçük alanlar ütülenmez. Küçük bir alan ütüden pek kazanmaz, ama ütüleme katman sonunda yapılınca ütüleyen her filament bir takım değişimine mal olur. 0 her alanı ütüler."
+
+msgid "Nonplanar in this region"
+msgstr "Bu bölgede nonplanar"
+
+msgid "Off: the top shells of this region stay planar although nonplanar layers are enabled for the object. Add it to a modifier to keep nonplanar shells out of the modifier's volume, or turn it off for the object and on in a modifier to have nonplanar shells only there."
+msgstr "Kapalıyken bu bölgenin üst kabukları, nesnede nonplanar katmanlar açık olsa da düz kalır. Bir değiştiriciye ekleyip onun hacminde nonplanar kabuk olmamasını sağlayabilir, ya da nesnede kapatıp bir değiştiricide açarak nonplanar kabukları sadece orada yaptırabilirsin."
+
+msgid "Nonplanar ironing height"
+msgstr "Nonplanar ütüleme yüksekliği"
+
+msgid "Height offset of disc 1: "
+msgstr "1. diskin yükseklik payı: "
+
+msgid "Five two-colour discs (body filament 1, symbol filament 2), each ironed at its own height offset. The number of notches on a disc's front edge is its number. Pick the disc whose surface is smooth and whose colour boundary is clean, and use its height offset."
+msgstr "Beş iki renkli disk (gövde 1. filament, sembol 2. filament), her biri kendi yükseklik payıyla ütülenir. Diskin ön kenarındaki çentik sayısı onun numarasıdır. Yüzeyi düz ve renk sınırı temiz olan diski seç, onun yükseklik payını kullan."
+
+msgid "Please input valid values:
+-0.03 <= height offset of disc 1
+step > 0
+height offset of disc 5 <= 0.05"
+msgstr "Geçerli değerler gir:
+-0.03 <= 1. diskin yükseklik payı
+adım > 0
+5. diskin yükseklik payı <= 0.05"
+>>>>>>> nonplanar

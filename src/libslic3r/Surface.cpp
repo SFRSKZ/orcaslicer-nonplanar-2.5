@@ -40,10 +40,12 @@ const char* surface_type_to_color_name(const SurfaceType surface_type)
 {
     switch (surface_type) {
         case stTop:             return "rgb(255,0,0)"; // "red";
+        case stTopNonplanar:    return "rgb(166,2,255)"; // "purple";
         case stBottom:          return "rgb(0,255,0)"; // "green";
         case stBottomBridge:    return "rgb(0,0,255)"; // "blue";
         case stInternal:        return "rgb(255,255,128)"; // yellow 
         case stInternalSolid:   return "rgb(255,0,255)"; // magenta
+        case stInternalSolidNonplanar: return "rgb(255,133,2)"; // orange
         case stInternalBridge:  return "rgb(0,255,255)";
         case stInternalVoid:    return "rgb(128,128,128)";
         case stPerimeter:       return "rgb(128,0,0)"; // maroon

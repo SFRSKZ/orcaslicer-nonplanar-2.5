@@ -7,15 +7,26 @@
 #include "Polyline.hpp"
 
 #include <assert.h>
+<<<<<<< 2.5.0
 #include <cstdint>
 #include <string>
 #include <cstddef>
+=======
+#include <atomic>
+#include <cstdint>
+>>>>>>> nonplanar
 #include <string_view>
 #include <numeric>
 #include <vector>
 #include <utility>
 
 namespace Slic3r {
+
+inline uint64_t next_nonplanar_path_id()
+{
+    static std::atomic<uint64_t> id{1};
+    return id.fetch_add(1, std::memory_order_relaxed);
+}
 
 class ExPolygon;
 using ExPolygons = std::vector<ExPolygon>;
@@ -185,6 +196,21 @@ public:
     float height;
     double smooth_speed = 0;
     bool z_contoured = false;
+    // Nonplanar provenance (ported from PrusaSlicer Nonplanar).  A path with
+    // nonplanar_source carries the absolute projected height of every point
+    // in its Point3 z (scaled), not a Z anti-aliasing offset.  Provenance
+    // survives path cloning, seam relocation and path splitting.
+    float distance_to_top = -1.0;
+    bool nonplanar_source = false;
+    size_t source_layer_id = size_t(-1);
+    int source_surface_id = -1;
+    uint64_t source_path_id = 0;
+    // OrcaSlicer Nonplanar edge prototype: the steepest slope this projected path is
+    // allowed to have.  Material next to a wall follows the fillet, which is steeper
+    // than the 12 deg limit of a plain conformal line; the value comes from the facets
+    // the path was actually projected onto, so a path on the shallow target surface
+    // keeps the normal limit.
+    float max_slope_deg = 12.f;
 
     ExtrusionPath() : mm3_per_mm(-1), width(-1), height(-1), m_role(erNone), m_no_extrusion(false) {}
     ExtrusionPath(ExtrusionRole role) : mm3_per_mm(-1), width(-1), height(-1), m_role(role), m_no_extrusion(false) {}
@@ -199,6 +225,12 @@ public:
         , height(rhs.height)
         , smooth_speed(rhs.smooth_speed)
         , z_contoured(rhs.z_contoured)
+        , distance_to_top(rhs.distance_to_top)
+        , nonplanar_source(rhs.nonplanar_source)
+        , source_layer_id(rhs.source_layer_id)
+        , source_surface_id(rhs.source_surface_id)
+        , source_path_id(rhs.source_path_id)
+        , max_slope_deg(rhs.max_slope_deg)
         , m_can_reverse(rhs.m_can_reverse)
         , m_role(rhs.m_role)
         , m_no_extrusion(rhs.m_no_extrusion)
@@ -212,6 +244,12 @@ public:
         , height(rhs.height)
         , smooth_speed(rhs.smooth_speed)
         , z_contoured(rhs.z_contoured)
+        , distance_to_top(rhs.distance_to_top)
+        , nonplanar_source(rhs.nonplanar_source)
+        , source_layer_id(rhs.source_layer_id)
+        , source_surface_id(rhs.source_surface_id)
+        , source_path_id(rhs.source_path_id)
+        , max_slope_deg(rhs.max_slope_deg)
         , m_can_reverse(rhs.m_can_reverse)
         , m_role(rhs.m_role)
         , m_no_extrusion(rhs.m_no_extrusion)
@@ -225,6 +263,12 @@ public:
         , height(rhs.height)
         , smooth_speed(rhs.smooth_speed)
         , z_contoured(rhs.z_contoured)
+        , distance_to_top(rhs.distance_to_top)
+        , nonplanar_source(rhs.nonplanar_source)
+        , source_layer_id(rhs.source_layer_id)
+        , source_surface_id(rhs.source_surface_id)
+        , source_path_id(rhs.source_path_id)
+        , max_slope_deg(rhs.max_slope_deg)
         , m_can_reverse(rhs.m_can_reverse)
         , m_role(rhs.m_role)
         , m_no_extrusion(rhs.m_no_extrusion)
@@ -238,6 +282,12 @@ public:
         , height(rhs.height)
         , smooth_speed(rhs.smooth_speed)
         , z_contoured(rhs.z_contoured)
+        , distance_to_top(rhs.distance_to_top)
+        , nonplanar_source(rhs.nonplanar_source)
+        , source_layer_id(rhs.source_layer_id)
+        , source_surface_id(rhs.source_surface_id)
+        , source_path_id(rhs.source_path_id)
+        , max_slope_deg(rhs.max_slope_deg)
         , m_can_reverse(rhs.m_can_reverse)
         , m_role(rhs.m_role)
         , m_no_extrusion(rhs.m_no_extrusion)
@@ -252,6 +302,12 @@ public:
         this->height = rhs.height;
         this->smooth_speed = rhs.smooth_speed;
         this->z_contoured = rhs.z_contoured;
+        this->distance_to_top = rhs.distance_to_top;
+        this->nonplanar_source = rhs.nonplanar_source;
+        this->source_layer_id = rhs.source_layer_id;
+        this->source_surface_id = rhs.source_surface_id;
+        this->source_path_id = rhs.source_path_id;
+        this->max_slope_deg = rhs.max_slope_deg;
         this->overhang_degree = rhs.overhang_degree;
         this->curve_degree = rhs.curve_degree;
         this->polyline = rhs.polyline;
@@ -266,6 +322,12 @@ public:
         this->height = rhs.height;
         this->smooth_speed = rhs.smooth_speed;
         this->z_contoured = rhs.z_contoured;
+        this->distance_to_top = rhs.distance_to_top;
+        this->nonplanar_source = rhs.nonplanar_source;
+        this->source_layer_id = rhs.source_layer_id;
+        this->source_surface_id = rhs.source_surface_id;
+        this->source_path_id = rhs.source_path_id;
+        this->max_slope_deg = rhs.max_slope_deg;
         this->overhang_degree = rhs.overhang_degree;
         this->curve_degree = rhs.curve_degree;
         this->polyline = std::move(rhs.polyline);

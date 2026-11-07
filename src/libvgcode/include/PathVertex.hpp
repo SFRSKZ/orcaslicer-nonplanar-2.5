@@ -103,6 +103,16 @@ struct PathVertex
     // Jerk value
     //
     float jerk{ 0.0f };
+    //
+    // OrcaSlicer Nonplanar: true when the segment belongs to a conformal
+    // (nonplanar) top-shell path, so the preview can color it differently.
+    //
+    bool nonplanar{ false };
+    //
+    // OrcaSlicer Nonplanar: true when the segment is inside a ;PATH_DEFERRED block
+    // (printed on a later layer than the one it belongs to).
+    //
+    bool deferred{ false };
 
     //
     // Return true if the segment is an extrusion move

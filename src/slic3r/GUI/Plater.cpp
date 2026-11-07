@@ -101,6 +101,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/iterator/counting_iterator.hpp>
+#include <boost/format.hpp>
 #include <boost/optional.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -17827,6 +17828,50 @@ void Plater::calib_retraction(const Calib_Params& params)
 
     _calib_apply_belt_mode();
     p->background_process.fff_print()->set_calib_params(params);
+}
+
+// OrcaSlicer Nonplanar: ironing height test.  Five discs in a row (meshes in
+// resources/calib/nonplanar_ironing, made by mk_utu_kalibre_stl.py), each its own object with
+// nonplanar layers and ironing on, slope press off and its own nonplanar_ironing_z_offset.
+void Plater::calib_nonplanar_ironing(double start, double step)
+{
+    if (new_project(false, false, wxString(L"Nonplanar ironing height test")) == wxID_CANCEL)
+        return;
+    wxGetApp().mainframe->select_tab(size_t(MainFrame::tp3DEditor));
+
+    const boost::filesystem::path dir = boost::filesystem::path(Slic3r::resources_dir()) / "calib" / "nonplanar_ironing";
+    TriangleMesh symbol;
+    if (! symbol.ReadSTLFile((dir / "symbol.stl").string().c_str()))
+        return;
+    const bool two_filaments = wxGetApp().preset_bundle->filament_presets.size() >= 2;
+    const Vec2d center = p->bed.build_volume().bed_center();
+
+    Model tmp;
+    ModelObjectPtrs objects;
+    for (int i = 0; i < 5; ++ i) {
+        TriangleMesh body;
+        if (! body.ReadSTLFile((dir / ("disc" + std::to_string(i + 1) + ".stl")).string().c_str()))
+            return;
+        const double z = start + i * step;
+        ModelObject *object = tmp.add_object();
+        object->name = (boost::format("%1%-z%2$.3f") % (i + 1) % z).str();
+        ModelVolume *vb = object->add_volume(std::move(body));
+        vb->name = "body";
+        vb->config.set_key_value("extruder", new ConfigOptionInt(1));
+        ModelVolume *vs = object->add_volume(symbol);
+        vs->name = "symbol";
+        vs->config.set_key_value("extruder", new ConfigOptionInt(two_filaments ? 2 : 1));
+        object->config.set_key_value("use_nonplanar_layers", new ConfigOptionBool(true));
+        object->config.set_key_value("nonplanar_ironing", new ConfigOptionBool(true));
+        object->config.set_key_value("nonplanar_ironing_slope_press", new ConfigOptionPercent(0));
+        object->config.set_key_value("nonplanar_ironing_z_offset", new ConfigOptionFloat(z));
+        ModelInstance *instance = object->add_instance();
+        instance->set_offset(Vec3d(center.x() + (i - 2) * 21., center.y(), 0.));
+        objects.push_back(object);
+    }
+    p->load_model_objects(objects);
+    const std::vector<size_t> object_idx(boost::counting_iterator<size_t>(0), boost::counting_iterator<size_t>(model().objects.size()));
+    changed_objects(object_idx);
 }
 
 void Plater::calib_VFA(const Calib_Params& params)

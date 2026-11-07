@@ -175,6 +175,9 @@ static std::string get_view_type_string(libvgcode::EViewType view_type)
 // ORCA: Add Pressure Advance visualization support
     else if (view_type == libvgcode::EViewType::PressureAdvance)
         return _u8L("Pressure Advance");
+    // OrcaSlicer Nonplanar
+    else if (view_type == libvgcode::EViewType::Nonplanar)
+        return _u8L("Nonplanar");
     return "";
 }
 
@@ -1323,6 +1326,8 @@ void GCodeViewer::update_by_mode(ConfigOptionMode mode)
     view_type_items.push_back(libvgcode::EViewType::Temperature);
 // ORCA: Add Pressure Advance visualization support
     view_type_items.push_back(libvgcode::EViewType::PressureAdvance);
+    // OrcaSlicer Nonplanar: planar / conformal / deferred paths
+    view_type_items.push_back(libvgcode::EViewType::Nonplanar);
     //if (mode == ConfigOptionMode::comDevelop) {
     //    view_type_items.push_back(EViewType::Tool);
     //}
@@ -1356,6 +1361,26 @@ void GCodeViewer::load_as_gcode(const GCodeProcessorResult& gcode_result, const 
                 const std::vector<BoundingBoxf3>& exclude_bounding_box, ConfigOptionMode mode, bool only_gcode)
 {
     m_loaded_as_preview = false;
+    // OrcaSlicer Nonplanar: remember whether this G-code actually contains conformal paths.
+    m_has_nonplanar = gcode_result.has_nonplanar;
+    {
+        m_np_time.fill(0.0f); m_np_len_m.fill(0.0); m_np_g.fill(0.0);
+        const size_t normal = static_cast<size_t>(PrintEstimatedStatistics::ETimeMode::Normal);
+        const auto& moves = gcode_result.moves;
+        for (size_t i = 1; i < moves.size(); ++i) {
+            const auto& m = moves[i];
+            if (m.type != EMoveType::Extrude || m.delta_extruder <= 0.0f)
+                continue;
+            const size_t k = m.nonplanar ? 1 : (m.deferred ? 2 : 0);
+            m_np_time[k] += m.time[normal];
+            const double volume = double(m.mm3_per_mm) * double((m.position - moves[i - 1].position).norm());
+            const size_t e = m.extruder_id;
+            if (e < gcode_result.filament_diameters.size() && gcode_result.filament_diameters[e] > 0.0f)
+                m_np_len_m[k] += 0.001 * volume / (PI * sqr(0.5 * gcode_result.filament_diameters[e]));
+            if (e < gcode_result.filament_densities.size())
+                m_np_g[k] += volume * gcode_result.filament_densities[e] * 0.001;
+        }
+    }
 
     // Belt printers: drive the designed/raw view UI (legend checkbox, hotkey B, canvas-toolbar
     // menu item) from the G-code itself. Only BeltGCode writes the belt header, so its tilt
@@ -1882,6 +1907,16 @@ void GCodeViewer::load_as_preview(libvgcode::GCodeInputData&& data)
                 const float dz = vertex.position[2] - data.vertices[i - 1].position[2];
                 m_move_type_distances[move_type] += std::sqrt(dx * dx + dy * dy + dz * dz);
             }
+        }
+    }
+
+    // OrcaSlicer Nonplanar: does this preview contain conformal (nonplanar) paths?
+    m_has_nonplanar = false;
+    m_np_time.fill(0.0f); m_np_len_m.fill(0.0); m_np_g.fill(0.0);
+    for (const libvgcode::PathVertex& vertex : data.vertices) {
+        if (vertex.nonplanar) {
+            m_has_nonplanar = true;
+            break;
         }
     }
 
@@ -2493,6 +2528,33 @@ void GCodeViewer::render_overlay(int canvas_width, int canvas_height, int right_
 
     float legend_height = 0.0f;
     render_legend(legend_height, canvas_width, canvas_height, right_margin);
+
+    // OrcaSlicer Nonplanar (Windows port): a small framed "NP" marker right next to the
+    // plate thumbnail in the preview, shown only when the sliced output actually contains
+    // nonplanar (conformal) layers. Plain literal, so it reads the same in every language.
+    if (m_has_nonplanar) {
+        // At the top right corner of the plate toolbar, with a gap.  The toolbar
+        // (GLCanvas3D::_render_imgui_select_plate_toolbar, same scale as m_scale) starts at
+        // x 5 and is 100 + 2 * (4 + 1 + 8) = 126 wide, so it ends at x 131; it starts at y 0, or
+        // below the collapse toolbar when that is on the left, and its first thumbnail at +8.
+        float toolbar_y = 0.0f;
+        if (const GLCanvas3D *canvas = wxGetApp().plater()->get_current_canvas3D(); canvas != nullptr && canvas->is_collapse_toolbar_on_left())
+            toolbar_y = canvas->get_collapse_toolbar_height() + 5.0f;
+        const ImVec2 np_pos((131.0f + 6.0f) * m_scale, toolbar_y + 8.0f * m_scale);
+        ImGui::SetNextWindowPos(np_pos, ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.55f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f * m_scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(7.0f * m_scale, 5.0f * m_scale));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.69f, 0.63f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f * m_scale);
+        ImGui::Begin("##NonplanarMarker", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoFocusOnAppearing);
+        ImGui::TextColored(ImVec4(0.0f, 0.69f, 0.63f, 1.0f), "NP");
+        ImGui::End();
+        ImGui::PopStyleVar(3);
+        ImGui::PopStyleColor();
+    }
 
     if (m_user_mode != wxGetApp().get_mode()) {
         update_by_mode(wxGetApp().get_mode());
@@ -4642,6 +4704,27 @@ void GCodeViewer::render_legend(float &legend_height, int canvas_width, int canv
         { imgui.title(_u8L("Layer Time")); break; }
     case libvgcode::EViewType::LayerTimeLogarithmic:
         { imgui.title(_u8L("Layer Time (log)")); break; }
+    // OrcaSlicer Nonplanar: same columns as the line type table
+    case libvgcode::EViewType::Nonplanar:
+    {
+        const std::string np_labels[3] = { _u8L("Planar"), _u8L("Nonplanar"), _u8L("Deferred planar") };
+        const float total_time = time_mode.time;
+        char buffer[64];
+        for (size_t k = 0; k < 3; ++k) {
+            labels.push_back(np_labels[k]);
+            times.push_back(m_np_time[k] > 0.0f ? short_time(get_time_dhms(m_np_time[k])) : "");
+            const float percent = total_time > 0.0f ? m_np_time[k] / total_time : 0.0f;
+            if (percent == 0.0f) ::sprintf(buffer, "0");
+            else percent > 0.001f ? ::sprintf(buffer, "%.1f", percent * 100) : ::sprintf(buffer, "<0.1");
+            percents.push_back(buffer);
+            ::sprintf(buffer, "%.2fm", m_np_len_m[k]);
+            used_filaments_length.push_back(buffer);
+            used_filaments_weight.push_back(format_compact_weight(m_np_g[k], imperial_units));
+        }
+        offsets = calculate_offsets({ {_u8L("Line Type"), labels}, {_u8L("Time"), times}, {"%", percents}, {"", used_filaments_length}, {"", used_filaments_weight} }, icon_size);
+        append_headers({{_u8L("Line Type"), offsets[0]}, {_u8L("Time"), offsets[1]}, {"%", offsets[2]}, {_u8L("Usage"), offsets[3]}});
+        break;
+    }
 
     case libvgcode::EViewType::Tool:
     {
@@ -4909,6 +4992,23 @@ void GCodeViewer::render_legend(float &legend_height, int canvas_width, int canv
     case libvgcode::EViewType::PressureAdvance:          { append_range(m_viewer.get_color_range(libvgcode::EViewType::PressureAdvance), 3); break; }
     case libvgcode::EViewType::LayerTimeLinear:          { append_range(m_viewer.get_color_range(libvgcode::EViewType::LayerTimeLinear), true); break; }
     case libvgcode::EViewType::LayerTimeLogarithmic:     { append_range(m_viewer.get_color_range(libvgcode::EViewType::LayerTimeLogarithmic), true); break; }
+    // OrcaSlicer Nonplanar: keep in sync with the colors in libvgcode ViewerImpl.cpp
+    case libvgcode::EViewType::Nonplanar:
+    {
+        const ColorRGBA np_colors[3] = { ColorRGBA(150 / 255.f, 150 / 255.f, 150 / 255.f, 1.f),
+                                         ColorRGBA(1.f, 0.f, 200 / 255.f, 1.f),
+                                         ColorRGBA(1.f, 150 / 255.f, 0.f, 1.f) };
+        for (size_t k = 0; k < 3 && k < labels.size(); ++k) {
+            std::vector<std::pair<std::string, float>> columns_offsets;
+            columns_offsets.push_back({ labels[k], offsets[0] });
+            columns_offsets.push_back({ times[k], offsets[1] });
+            columns_offsets.push_back({ percents[k], offsets[2] });
+            columns_offsets.push_back({ used_filaments_length[k], offsets[3] });
+            columns_offsets.push_back({ used_filaments_weight[k], offsets[4] });
+            append_item(EItemType::Rect, np_colors[k], columns_offsets, false);
+        }
+        break;
+    }
     case libvgcode::EViewType::VolumetricFlowRate:       { append_range(m_viewer.get_color_range(libvgcode::EViewType::VolumetricFlowRate), 2); break; }
     case libvgcode::EViewType::ActualVolumetricFlowRate: { append_range(m_viewer.get_color_range(libvgcode::EViewType::ActualVolumetricFlowRate), 2); break; }
     case libvgcode::EViewType::Tool:

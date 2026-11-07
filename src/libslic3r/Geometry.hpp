@@ -575,6 +575,11 @@ Transformation generate_transform(const Vec3d &x_dir, const Vec3d &y_dir, const 
  */
 bool is_point_inside_polygon_corner(const Point &a, const Point &b, const Point &c, const Point &query_point);
 
+// Signed area of a triangle in XY (ported from PrusaSlicer Nonplanar).
+inline float triangle_surface(Point p1, Point p2, Point p3) {
+    return 0.5 * ((p2.x()-p1.x()) * (p3.y()-p1.y()) - (p2.y()-p1.y()) * (p3.x()-p1.x()));
+}
+
 } } // namespace Slicer::Geometry
 
 #endif

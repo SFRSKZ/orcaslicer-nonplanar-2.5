@@ -1152,6 +1152,80 @@ void Retraction_Test_Dlg::on_dpi_changed(const wxRect& suggested_rect) {
 
 }
 
+// NonplanarIroning_Test_Dlg
+//
+
+NonplanarIroning_Test_Dlg::NonplanarIroning_Test_Dlg(wxWindow* parent, wxWindowID id, Plater* plater)
+    : DPIDialog(parent, id, _L("Nonplanar ironing height"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE), m_plater(plater)
+{
+    SetBackgroundColour(*wxWHITE);
+    SetForegroundColour(wxColour("#363636"));
+    SetFont(Label::Body_14);
+
+    wxBoxSizer* v_sizer = new wxBoxSizer(wxVERTICAL);
+    SetSizer(v_sizer);
+
+    wxString start_str = _L("Height offset of disc 1: ");
+    wxString step_str  = _L("Step") + ": ";
+    auto st_size = wxSize(GetTextMax(this, std::vector<wxString>{start_str, step_str}), -1);
+    auto ti_size = FromDIP(wxSize(120, -1));
+
+    LabeledStaticBox* stb = new LabeledStaticBox(this, _L("Settings"));
+    wxStaticBoxSizer* settings_sizer = new wxStaticBoxSizer(stb, wxVERTICAL);
+    settings_sizer->AddSpacer(FromDIP(5));
+
+    auto add_row = [&](const wxString &label, const wxString &value) {
+        auto sizer = new wxBoxSizer(wxHORIZONTAL);
+        auto text  = new wxStaticText(this, wxID_ANY, label, wxDefaultPosition, st_size, wxALIGN_LEFT);
+        auto ti    = new TextInput(this, value, _L("mm"), "", wxDefaultPosition, ti_size);
+        ti->GetTextCtrl()->SetValidator(wxTextValidator(wxFILTER_NUMERIC));
+        sizer->Add(text, 0, wxALL | wxALIGN_CENTER_VERTICAL, FromDIP(2));
+        sizer->Add(ti, 0, wxALL | wxALIGN_CENTER_VERTICAL, FromDIP(2));
+        settings_sizer->Add(sizer, 0, wxLEFT, FromDIP(3));
+        return ti;
+    };
+    m_tiStart = add_row(start_str, wxString::FromDouble(0.01));
+    m_tiStep  = add_row(step_str, wxString::FromDouble(0.005));
+
+    auto note = new wxStaticText(this, wxID_ANY,
+        _L("Five two-colour discs (body filament 1, symbol filament 2), each ironed at its own height offset. "
+           "The number of notches on a disc's front edge is its number. Pick the disc whose surface is smooth "
+           "and whose colour boundary is clean, and use its height offset."));
+    note->Wrap(FromDIP(320));
+    settings_sizer->Add(note, 0, wxALL, FromDIP(5));
+
+    v_sizer->Add(settings_sizer, 0, wxTOP | wxRIGHT | wxLEFT | wxEXPAND, FromDIP(10));
+    v_sizer->AddSpacer(FromDIP(5));
+
+    auto dlg_btns = new DialogButtons(this, {"OK"});
+    v_sizer->Add(dlg_btns, 0, wxEXPAND);
+    dlg_btns->GetOK()->Bind(wxEVT_BUTTON, &NonplanarIroning_Test_Dlg::on_start, this);
+
+    wxGetApp().UpdateDlgDarkUI(this);
+    Layout();
+    Fit();
+    v_sizer->SetSizeHints(this);
+}
+
+void NonplanarIroning_Test_Dlg::on_start(wxCommandEvent& event)
+{
+    double start = 0., step = 0.;
+    const bool ok = m_tiStart->GetTextCtrl()->GetValue().ToDouble(&start) && m_tiStep->GetTextCtrl()->GetValue().ToDouble(&step);
+    if (! ok || start < -0.03 || step <= 0. || start + 4. * step > 0.05) {
+        MessageDialog msg_dlg(nullptr, _L("Please input valid values:\n-0.03 <= height offset of disc 1\nstep > 0\nheight offset of disc 5 <= 0.05"), wxEmptyString, wxICON_WARNING | wxOK);
+        msg_dlg.ShowModal();
+        return;
+    }
+    EndModal(wxID_OK);
+    m_plater->calib_nonplanar_ironing(start, step);
+}
+
+void NonplanarIroning_Test_Dlg::on_dpi_changed(const wxRect& suggested_rect)
+{
+    this->Refresh();
+    Fit();
+}
+
 // Input_Shaping_Freq_Test_Dlg
 //
 

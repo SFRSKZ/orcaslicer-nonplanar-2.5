@@ -299,9 +299,16 @@ bool Print::invalidate_state_by_config_options(const ConfigOptionResolver & /* n
         "printing_by_object_gcode",
         "filament_end_gcode",
         "post_process",
+<<<<<<< 2.5.0
         // "plugins" is the derived manifest backing the plugin-picker options; on its own it only
         // affects G-code export. The specific option (e.g. slicing_pipeline_plugin) drives any re-slice.
         "plugins",
+=======
+        "nonplanar_gcode_cleanup",
+        "nonplanar_dot_min_length",
+        "nonplanar_travel_clearance",
+        "nonplanar_ironing_last",
+>>>>>>> nonplanar
         "extruder_clearance_height_to_rod",
         "extruder_clearance_height_to_lid",
         "extruder_clearance_radius",

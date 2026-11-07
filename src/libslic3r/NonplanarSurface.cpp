@@ -1,0 +1,353 @@
+#include "NonplanarSurface.hpp"
+#include "Exception.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <boost/log/trivial.hpp>
+
+namespace Slic3r {
+
+NonplanarSurface::NonplanarSurface(std::map<int, NonplanarFacet> &_mesh)
+{
+    this->mesh = _mesh;
+    this->calculate_stats();
+}
+
+bool 
+NonplanarSurface::operator==(const NonplanarSurface& other) const {
+   return (stats.min.x == other.stats.min.x &&
+           stats.min.y == other.stats.min.y &&
+           stats.min.z == other.stats.min.z &&
+           stats.max.x == other.stats.max.x &&
+           stats.max.y == other.stats.max.y &&
+           stats.max.z == other.stats.max.z);
+}
+
+void
+NonplanarSurface::calculate_stats()
+{
+    //calculate min and max values
+    this->stats.min.x = 10000000;
+    this->stats.min.y = 10000000;
+    this->stats.min.z = 10000000;
+    this->stats.max.x = -10000000;
+    this->stats.max.y = -10000000;
+    this->stats.max.z = -10000000;
+    for(auto& facet : this->mesh) {
+        // Edge-ring prototype: rim facets only exist so the extra ring can be
+        // projected onto the steeper edge.  They must not change the surface's
+        // extents (home-layer choice, max-height and area checks, shell offsets).
+        if (facet.second.rim)
+            continue;
+        this->stats.min.x = std::min(this->stats.min.x, facet.second.stats.min.x);
+        this->stats.min.y = std::min(this->stats.min.y, facet.second.stats.min.y);
+        this->stats.min.z = std::min(this->stats.min.z, facet.second.stats.min.z);
+        this->stats.max.x = std::max(this->stats.max.x, facet.second.stats.max.x);
+        this->stats.max.y = std::max(this->stats.max.y, facet.second.stats.max.y);
+        this->stats.max.z = std::max(this->stats.max.z, facet.second.stats.max.z);
+    }
+}
+
+void
+NonplanarSurface::translate(float x, float y, float z)
+{
+    //translate all facets
+    for(auto& facet : this->mesh) {
+        facet.second.translate(x, y, z);
+    }
+
+    //translate min and max values
+    this->stats.min.x += x;
+    this->stats.min.y += y;
+    this->stats.min.z += z;
+    this->stats.max.x += x;
+    this->stats.max.y += y;
+    this->stats.max.z += z;
+}
+
+void
+NonplanarSurface::scale(float factor)
+{
+    float versor[3];
+    versor[0] = factor;
+    versor[1] = factor;
+    versor[2] = factor;
+    this->scale(versor);
+}
+
+void
+NonplanarSurface::scale(float versor[3])
+{
+    //scale all facets
+    for(auto& facet : this->mesh) {
+        facet.second.scale(versor);
+    }
+
+    //scale min and max values
+    this->stats.min.x *= versor[0];
+    this->stats.min.y *= versor[1];
+    this->stats.min.z *= versor[2];
+    this->stats.max.x *= versor[0];
+    this->stats.max.y *= versor[1];
+    this->stats.max.z *= versor[2];
+}
+
+void
+NonplanarSurface::rotate_z(float angle) {
+  double radian_angle = (angle / 180.0) * 3.1415927;
+  double c = cos(radian_angle);
+  double s = sin(radian_angle);
+
+  for(auto& facet : this->mesh) {
+    for(int j = 0; j < 3; j++) {
+        double xold = facet.second.vertex[j].x;
+        double yold = facet.second.vertex[j].y;
+        facet.second.vertex[j].x = c * xold - s * yold;
+        facet.second.vertex[j].y = s * xold + c * yold;
+    }
+    facet.second.calculate_stats();
+  }
+
+  this->calculate_stats();
+}
+
+void
+NonplanarSurface::debug_output()
+{
+    std::cout << "Facets(" << this->mesh.size() << "): (min:X:" << this->stats.min.x << " Y:" << this->stats.min.y << " Z:" << this->stats.min.z <<
+                           " max:X:" << this->stats.max.x << " Y:" << this->stats.max.y << " Z:" << this->stats.max.z << ")" << 
+                           "Height " << this->stats.max.z - this->stats.min.z << std::endl;
+    for(auto& facet : this->mesh) {
+        std::cout << "triangle: (" << facet.first << ")(" << facet.second.marked << ") ";
+        std::cout << " (" << (180*std::acos(facet.second.normal.z))/3.14159265 << "°)";
+
+        std::cout << " | V0:";
+        std::cout << " X:"<< facet.second.vertex[0].x;
+        std::cout << " Y:"<< facet.second.vertex[0].y;
+        std::cout << " Z:"<< facet.second.vertex[0].z;
+
+        std::cout << " | V1:";
+        std::cout << " X:"<< facet.second.vertex[1].x;
+        std::cout << " Y:"<< facet.second.vertex[1].y;
+        std::cout << " Z:"<< facet.second.vertex[1].z;
+
+        std::cout << " | V2:";
+        std::cout << " X:"<< facet.second.vertex[2].x;
+        std::cout << " Y:"<< facet.second.vertex[2].y;
+        std::cout << " Z:"<< facet.second.vertex[2].z;
+
+        std::cout << " | Normal:";
+        std::cout << " X:"<< facet.second.normal.x;
+        std::cout << " Y:"<< facet.second.normal.y;
+        std::cout << " Z:"<< facet.second.normal.z;
+
+        //TODO check if neighbors exist
+        // stl_neighbors* neighbors = mesh.stl.neighbors_start + facet.first;
+        std::cout << " | Neighbors:";
+        std::cout << " 0:"<< facet.second.neighbor[0];
+        std::cout << " 1:"<< facet.second.neighbor[1];
+        std::cout << " 2:"<< facet.second.neighbor[2];
+        std::cout << std::endl;
+    }
+}
+
+NonplanarSurfaces
+NonplanarSurface::group_surfaces()
+{
+    std::pair<int, NonplanarFacet> begin = *this->mesh.begin();
+    this->mark_neighbor_surfaces(begin.first);
+    NonplanarSurface newSurface;
+    for (std::map<int, NonplanarFacet>::iterator it=this->mesh.begin(); it!=this->mesh.end();) {
+        if((*it).second.marked == false) {
+            newSurface.mesh[(*it).first] = (*it).second;
+            it = this->mesh.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+    this->calculate_stats();
+    if (newSurface.mesh.size() == 0) {
+        //return only this
+        NonplanarSurfaces nonplanar_surfaces;
+        nonplanar_surfaces.push_back(*this);
+        return nonplanar_surfaces;
+    } 
+    else {
+        //return union of this and recursion
+        NonplanarSurfaces nonplanar_surfaces = newSurface.group_surfaces();
+        nonplanar_surfaces.push_back(*this);
+        return nonplanar_surfaces;
+    }
+}
+
+void
+NonplanarSurface::mark_neighbor_surfaces(int id)
+{
+    //if already marked return
+    if(this->mesh.find(id) == this->mesh.end() || this->mesh[id].marked == true) return;
+    //mark this facet
+    this->mesh[id].marked = true;
+    //mark all neighbors
+    for(int j = 0; j < 3; j++) {
+        this->mark_neighbor_surfaces(this->mesh[id].neighbor[j]);
+    }
+}
+
+bool
+NonplanarSurface::check_max_printing_height(float height) 
+{
+    if ((this->stats.max.z - this->stats.min.z) > height ) {
+        BOOST_LOG_TRIVIAL(trace) << "Surface removed: printheight too heigh (" << (this->stats.max.z - this->stats.min.z) << " mm)";
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool
+NonplanarSurface::check_surface_area()
+{
+    //calculate surface area of nonplanar surface.
+    float area = 0.0f;
+    for(auto& facet : this->mesh) {
+        // See calculate_stats(): rim facets are projection targets only.
+        if (facet.second.rim)
+            continue;
+        area += facet.second.calculate_surface_area();
+    }
+    if (area < 20.0f) {
+        BOOST_LOG_TRIVIAL(trace) << "Surface removed: area too small (" << area << " mm²)";
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void
+NonplanarSurface::check_printable_surfaces(float max_angle)
+{
+    //TODO do something
+}
+
+/* this will return scaled ExPolygons */
+ExPolygons
+NonplanarSurface::horizontal_projection(Projection kind) const
+{
+    Polygons pp;
+    pp.reserve(this->mesh.size() + this->rim.size());
+    auto append = [&pp](const std::map<int, NonplanarFacet> &facets) {
+        for (auto &facet : facets) {
+            Polygon p;
+            p.points.resize(3);
+            p.points[0] = Point(scale_(facet.second.vertex[0].x), scale_(facet.second.vertex[0].y));
+            p.points[1] = Point(scale_(facet.second.vertex[1].x), scale_(facet.second.vertex[1].y));
+            p.points[2] = Point(scale_(facet.second.vertex[2].x), scale_(facet.second.vertex[2].y));
+            p.make_counter_clockwise();  // do this after scaling, as winding order might change while doing that
+            pp.push_back(p);
+        }
+    };
+    append(this->mesh);
+    if (kind == Projection::Target)
+        append(this->rim);
+
+    // the offset factor was tuned using groovemount.stl
+    return union_ex(offset(pp, scale_(0.01)));
+}
+
+bool
+NonplanarSurface::height_near(double x, double y, double max_dist, double &z) const
+{
+    double best = max_dist * max_dist;
+    bool   found = false;
+    for (const auto &entry : this->mesh) {
+        const NonplanarFacet &f = entry.second;
+        if (x < f.stats.min.x - max_dist || x > f.stats.max.x + max_dist ||
+            y < f.stats.min.y - max_dist || y > f.stats.max.y + max_dist)
+            continue;
+        const auto &a = f.vertex[0], &b = f.vertex[1], &c = f.vertex[2];
+        const double den = (b.y-a.y)*(c.x-a.x) - (b.x-a.x)*(c.y-a.y);
+        if (std::abs(den) > 1e-12) {
+            const double w1 = ((y-a.y)*(c.x-a.x) - (x-a.x)*(c.y-a.y)) / den;
+            const double w2 = ((b.y-a.y)*(x-a.x) - (b.x-a.x)*(y-a.y)) / den;
+            const double w0 = 1.0 - w1 - w2;
+            if (w0 >= -1e-7 && w1 >= -1e-7 && w2 >= -1e-7) {
+                z = w0*a.z + w1*b.z + w2*c.z;
+                return true;
+            }
+        }
+        for (int i = 0; i < 3; ++ i) {
+            const auto &p = f.vertex[i], &q = f.vertex[(i+1)%3];
+            const double dx = q.x-p.x, dy = q.y-p.y, len2 = dx*dx + dy*dy;
+            if (len2 < 1e-12) continue;
+            const double t  = std::max(0.0, std::min(1.0, ((x-p.x)*dx + (y-p.y)*dy) / len2));
+            const double ex = x-p.x-t*dx, ey = y-p.y-t*dy, d2 = ex*ex + ey*ey;
+            if (d2 <= best) {
+                best  = d2;
+                z     = p.z + t*(q.z-p.z);
+                found = true;
+            }
+        }
+    }
+    return found;
+}
+
+double nonplanar_edge_reach(bool enabled)
+{
+    // The environment is a test hook only: NONPLANAR_EDGE_RING=0 forces the fix off,
+    // =1 forces it on regardless of the setting.  Both are read once; the setting
+    // itself is evaluated on every call, so it follows the object's config live.
+    static const int env_mode = []() {
+        const char *on = std::getenv("NONPLANAR_EDGE_RING");
+        if (on != nullptr && std::strcmp(on, "0") == 0)
+            return 0;   // forced off
+        if (on != nullptr && std::strcmp(on, "1") == 0)
+            return 1;   // forced on
+        return -1;      // follow the setting
+    }();
+    static const double env_reach = []() {
+        const char  *v = std::getenv("NONPLANAR_EDGE_REACH");
+        const double r = v != nullptr ? std::atof(v) : 0.0;
+        return (r > 0.05 && r <= 3.0) ? r : 1.0;
+    }();
+    if (env_mode == 0)
+        return 0.0;
+    if (env_mode < 0 && !enabled)
+        return 0.0;
+    return env_reach;
+}
+
+std::string nonplanar_location(double z, size_t layer_id)
+{
+    char buf[80];
+    std::snprintf(buf, sizeof(buf), " at height %.2f mm (layer %zu)", z, layer_id + 1);
+    return buf;
+}
+
+double nonplanar_suggested_angle(double angle)
+{
+    return angle > 10. + EPSILON ? 10. : std::max(1., std::floor(angle) - 2.);
+}
+
+void throw_nonplanar_too_steep(double z, size_t layer_id, double angle, size_t object_id, const std::string &detail)
+{
+    BOOST_LOG_TRIVIAL(error) << "Nonplanar surface too steep" << nonplanar_location(z, layer_id) << ": " << detail;
+    char buf[400];
+    std::snprintf(buf, sizeof(buf), "Nonplanar slicing failed%s: a nonplanar line would have to climb more than 12° there "
+        "(a sharp edge or step in the surface). Lower \"Maximum nonplanar angle\" to %g° or less and slice again.",
+        nonplanar_location(z, layer_id).c_str(), nonplanar_suggested_angle(angle));
+    throw Slic3r::SlicingError(buf, object_id);
+}
+
+void throw_nonplanar_internal(const std::string &where, const std::string &detail, size_t object_id)
+{
+    BOOST_LOG_TRIVIAL(error) << "Nonplanar internal check failed" << where << ": " << detail;
+    throw Slic3r::SlicingError("Nonplanar slicing stopped" + where + ": an internal check failed (" + detail + "). "
+        "This is a bug, not a setting problem: please report it with the 3MF file. "
+        "To slice now, turn off nonplanar layers for this object.", object_id);
+}
+
+}

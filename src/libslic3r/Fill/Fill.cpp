@@ -54,6 +54,27 @@ namespace Slic3r::FillLightning { class Generator; }
 
 namespace Slic3r {
 
+// Nonplanar provenance of generated fills (ported from PrusaSlicer Nonplanar).
+static void mark_fill_provenance(ExtrusionEntity *entity, const Surface &surface, size_t layer_id)
+{
+    auto mark = [&surface, layer_id](ExtrusionPath &path) {
+        path.nonplanar_source = surface.is_nonplanar();
+        path.distance_to_top = surface.is_nonplanar() ? surface.distance_to_top : -1.f;
+        path.source_layer_id = surface.source_layer_id != size_t(-1) ? surface.source_layer_id : layer_id;
+        path.source_surface_id = surface.source_surface_id;
+        if (path.source_path_id == 0)
+            path.source_path_id = next_nonplanar_path_id();
+    };
+    if (auto *path = dynamic_cast<ExtrusionPath*>(entity))
+        mark(*path);
+    else if (auto *loop = dynamic_cast<ExtrusionLoop*>(entity))
+        for (ExtrusionPath &path : loop->paths) mark(path);
+    else if (auto *multi = dynamic_cast<ExtrusionMultiPath*>(entity))
+        for (ExtrusionPath &path : multi->paths) mark(path);
+    else if (auto *collection = dynamic_cast<ExtrusionEntityCollection*>(entity))
+        for (ExtrusionEntity *child : collection->entities) mark_fill_provenance(child, surface, layer_id);
+}
+
 // Calculate infill rotation angle (in radians) for a given layer from a rotation template.
 // Grammar subset handled (rotation only):
 //   [±]α[*Z or !][joint][-][N|B|T][length][* or !]
@@ -313,6 +334,7 @@ struct SurfaceFillParams
     // For Gyroid: when true, use the parameterized "optimized" wave.
     bool gyroid_optimized = false;
 
+<<<<<<< 2.5.0
     // For TPMS: grade the density from the surface to the interior of the object.
     AdaptiveInfillMode     adaptive_infill_mode          = AdaptiveInfillMode::Disabled;
     float                adaptive_infill_interior_density  = 0.f;
@@ -326,6 +348,13 @@ struct SurfaceFillParams
 
     // Orca: forced print order of surface fill loops/fragments for center-based patterns.
     SurfaceFillOrder fill_order = SurfaceFillOrder::Default;
+=======
+	// Nonplanar material shell identity (target surface, shell offset).
+	// Fills of different shells must never be merged into one group: the
+	// group keeps the metadata of its first surface only.
+	int 			nonplanar_surface_id = -1;
+	float 			nonplanar_shell_offset = -1.f;
+>>>>>>> nonplanar
 
 	bool operator<(const SurfaceFillParams &rhs) const {
 #define RETURN_COMPARE_NON_EQUAL(KEY) if (this->KEY < rhs.KEY) return true; if (this->KEY > rhs.KEY) return false;
@@ -360,6 +389,7 @@ struct SurfaceFillParams
 		RETURN_COMPARE_NON_EQUAL(skin_infill_depth);
         RETURN_COMPARE_NON_EQUAL(infill_overhang_angle);
 		RETURN_COMPARE_NON_EQUAL(gyroid_optimized);
+<<<<<<< 2.5.0
 		RETURN_COMPARE_NON_EQUAL(adaptive_infill_mode);
 		RETURN_COMPARE_NON_EQUAL(adaptive_infill_interior_density);
 		RETURN_COMPARE_NON_EQUAL(adaptive_infill_gradient);
@@ -367,6 +397,10 @@ struct SurfaceFillParams
         RETURN_COMPARE_NON_EQUAL(center_of_surface_pattern);
         RETURN_COMPARE_NON_EQUAL(separated_infills);
 		RETURN_COMPARE_NON_EQUAL_TYPED(unsigned, fill_order);
+=======
+		RETURN_COMPARE_NON_EQUAL(nonplanar_surface_id);
+		RETURN_COMPARE_NON_EQUAL(nonplanar_shell_offset);
+>>>>>>> nonplanar
 
 		return false;
 	}
@@ -393,6 +427,7 @@ struct SurfaceFillParams
 				this->infill_lock_depth       == rhs.infill_lock_depth       &&
 				this->skin_infill_depth       == rhs.skin_infill_depth       &&
                 this->infill_overhang_angle   == rhs.infill_overhang_angle   &&
+<<<<<<< 2.5.0
                 this->center_of_surface_pattern == rhs.center_of_surface_pattern &&
                 this->separated_infills       == rhs.separated_infills &&
                 this->gyroid_optimized        == rhs.gyroid_optimized        &&
@@ -401,6 +436,11 @@ struct SurfaceFillParams
                 this->adaptive_infill_gradient  == rhs.adaptive_infill_gradient  &&
                 this->smooth_factor           == rhs.smooth_factor           &&
                 this->fill_order              == rhs.fill_order;
+=======
+                this->gyroid_optimized        == rhs.gyroid_optimized        &&
+				this->nonplanar_surface_id    == rhs.nonplanar_surface_id    &&
+				this->nonplanar_shell_offset  == rhs.nonplanar_shell_offset;
+>>>>>>> nonplanar
 	}
 };
 
@@ -961,7 +1001,18 @@ std::vector<SurfaceFill> group_fills(const Layer &layer, LockRegionParam &lock_p
                     params.infill_complete_top = region_config.infill_complete_top;
                 }
 
-                if (surface.is_solid()) {
+                if (surface.is_nonplanar()) {
+                    // Conformal shells (ported from PrusaSlicer Nonplanar): the top
+                    // shell is monotonic or rectilinear like a planar solid infill
+                    // and always dense; the lower shells use the internal solid
+                    // pattern (PrusaSlicer's "ensuring" has no Orca counterpart).
+                    if (surface.surface_type == stTopNonplanar)
+                        params.pattern = (region_config.top_surface_pattern == ipMonotonic || region_config.top_surface_pattern == ipMonotonicLine) ?
+                            ipMonotonic : ipRectilinear;
+                    else
+                        params.pattern = region_config.internal_solid_infill_pattern.value;
+                    params.density = 100.f;
+                } else if (surface.is_solid()) {
                     if (surface.is_external() && !is_bridge) {
                         if (surface.is_top()) {
                             params.pattern = region_config.top_surface_pattern.value;
@@ -1054,7 +1105,24 @@ std::vector<SurfaceFill> group_fills(const Layer &layer, LockRegionParam &lock_p
                         params.fixed_angle = !region_config.solid_infill_rotate_template.value.empty();
                     }
                 }
+                if (surface.is_nonplanar() && object_config.set_nonplanar_top_surface_direction.value) {
+                    // Fixed direction of the top shell; each shell below
+                    // crosses the one above it.
+                    const long shell = std::lround(surface.distance_to_top / layer.height);
+                    params.angle = float(Geometry::deg2rad(object_config.nonplanar_top_surface_direction.value + (shell % 2 ? 90. : 0.)));
+                    params.fixed_angle = true;
+                }
                 params.bridge_angle = float(surface.bridge_angle);
+                if (surface.is_nonplanar()) {
+                    if (surface.source_surface_id < 0 || surface.distance_to_top < 0)
+                        throw_nonplanar_internal(nonplanar_location(layer.print_z, layer.id()),
+                            "fill surface without target surface or shell offset", layer.object()->id().id);
+                    params.nonplanar_surface_id   = surface.source_surface_id;
+                    params.nonplanar_shell_offset = surface.distance_to_top;
+                } else {
+                    params.nonplanar_surface_id   = -1;
+                    params.nonplanar_shell_offset = -1.f;
+                }
 
                 // ORCA: Align infill angle to model
                 float align_offset = 0.f;
@@ -1236,6 +1304,8 @@ std::vector<SurfaceFill> group_fills(const Layer &layer, LockRegionParam &lock_p
 	        	}
 	        if (internal_solid_fill == nullptr) {
 	        	// Produce another solid fill.
+		        params.nonplanar_surface_id   = -1;
+		        params.nonplanar_shell_offset = -1.f;
 		        params.extruder 	 = layerm.region().extruder(frSolidInfill);
                 const auto top_pattern = layerm.region().config().top_surface_pattern;
                 if(top_pattern == ipMonotonic || top_pattern == ipMonotonicLine)
@@ -1518,9 +1588,13 @@ void Layer::make_fills(const FillAdaptive::RegionOctrees* fill_octrees, FillLigh
                     params.density = 1.0f - (1.0f - elefant_density) * (elefant_layers - (f->layer_id - 1)) / elefant_layers; // Reverse calculation - The higher layer number means the higher density. Counting starts from the second layer.
             }
             // make fill
+            ExtrusionEntitiesPtr &region_fills = m_regions[surface_fill.region_id]->fills.entities;
+            const size_t fills_begin = region_fills.size();
 			f->fill_surface_extrusion(&surface_fill.surface,
 				params,
-				m_regions[surface_fill.region_id]->fills.entities);
+				region_fills);
+            for (size_t i = fills_begin; i < region_fills.size(); ++ i)
+                mark_fill_provenance(region_fills[i], surface_fill.surface, this->id());
 		}
     }
 
@@ -1867,7 +1941,10 @@ void Layer::make_ironing()
 				if (iron_completely) {
 					// Iron everything. This is likely only good for solid transparent objects.
 					for (const Surface &surface : ironing_params.layerm->slices.surfaces)
-						polygons_append(polys, surface.expolygon);
+						// Nonplanar shells are curved: a flat ironing pass at this layer's height
+						// would run through them.  They have their own ironing (nonplanar_ironing).
+						if (! surface.is_nonplanar())
+							polygons_append(polys, surface.expolygon);
 				} else {
 					for (const Surface &surface : ironing_params.layerm->slices.surfaces)
 						if ((surface.surface_type == stTop && (region_config.top_shell_layers > 0 || this->object()->print()->config().spiral_mode)) || (iron_everything && surface.surface_type == stBottom && region_config.bottom_shell_layers > 0))

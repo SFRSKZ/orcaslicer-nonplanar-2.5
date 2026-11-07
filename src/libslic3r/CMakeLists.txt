@@ -245,6 +245,10 @@ set(lisbslic3r_sources
     GCode/AdaptivePAInterpolator.cpp
     GCode/AdaptivePAInterpolator.hpp
     GCode/AdaptivePAProcessor.cpp
+    GCode/NonplanarFlow.cpp
+    GCode/NonplanarFlow.hpp
+    GCode/NonplanarPostfix.cpp
+    GCode/NonplanarPostfix.hpp
     GCode/AdaptivePAProcessor.hpp
     GCode/AvoidCrossingPerimeters.cpp
     GCode/AvoidCrossingPerimeters.hpp
@@ -404,6 +408,14 @@ set(lisbslic3r_sources
     PlaceholderParser.hpp
     Platform.cpp
     Platform.hpp
+    NonplanarFacet.cpp
+    NonplanarFacet.hpp
+    NonplanarSchedule.cpp
+    NonplanarSchedule.hpp
+    NonplanarSurface.cpp
+    NonplanarSurface.hpp
+    NonplanarIroning.cpp
+    NonplanarTipHeight.hpp
     PNGReadWrite.cpp
     PNGReadWrite.hpp
     Point.cpp

@@ -124,6 +124,9 @@ public:
     std::string eager_lift(const LiftType type);
     // record a lift request, do realy lift in next travel
     std::string lazy_lift(LiftType lift_type = LiftType::NormalLift, bool spiral_vase = false);
+    // Nonplanar travels lift explicitly above all deposited material; a
+    // pending lazy lift (z-hop) of the retraction is superseded by that move.
+    void        cancel_lazy_lift() { m_to_lift = 0.; m_lifted = 0.; }
     std::string unlift();
     const Vec3d& get_position() const { return m_pos; }
     Vec3d&       get_position() { return m_pos; }

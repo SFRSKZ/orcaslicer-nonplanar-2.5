@@ -336,6 +336,13 @@ static const std::array<Color, size_t(EGCodeExtrusionRole::COUNT)> DEFAULT_EXTRU
     { 128, 128, 128 }, // Mixed
 } };
 
+// OrcaSlicer Nonplanar: preview color of the conformal (nonplanar) top-shell paths.
+// Chosen to stand out from every extrusion-role color above (bright magenta).
+static const Color NONPLANAR_COLOR = { 255, 0, 200 };
+// Nonplanar view: planar paths printed on a later layer (deferred), and plain planar paths.
+static const Color NONPLANAR_DEFERRED_COLOR = { 255, 150, 0 };
+static const Color NONPLANAR_PLANAR_COLOR   = { 150, 150, 150 };
+
 static const std::array<Color, size_t(EOptionType::COUNT)> DEFAULT_OPTIONS_COLORS{ {
     {  56,  72, 155 }, // Travels
     { 255, 255,   0 }, // Wipes
@@ -1736,6 +1743,9 @@ Color ViewerImpl::get_vertex_color(const PathVertex& v) const
     if (v.type == EMoveType::Noop)
         return DUMMY_COLOR;
 
+    // OrcaSlicer Nonplanar: the conformal paths get their own color only in the Nonplanar
+    // view (below); every other view colors them like any other path.
+
     if ((v.is_wipe() && (m_settings.view_type != EViewType::Speed && m_settings.view_type != EViewType::ActualSpeed && m_settings.view_type != EViewType::Acceleration && m_settings.view_type != EViewType::Jerk)) || v.is_option())
         return get_option_color(move_type_to_option(v.type));
 
@@ -1801,6 +1811,12 @@ Color ViewerImpl::get_vertex_color(const PathVertex& v) const
     {
         return v.is_travel() ? get_option_color(move_type_to_option(v.type)) :
             m_layer_time_range[1].get_color_at(m_layers.get_layer_time(m_settings.time_mode, static_cast<size_t>(v.layer_id)));
+    }
+    case EViewType::Nonplanar:
+    {
+        if (v.is_travel())
+            return get_option_color(move_type_to_option(v.type));
+        return v.nonplanar ? NONPLANAR_COLOR : v.deferred ? NONPLANAR_DEFERRED_COLOR : NONPLANAR_PLANAR_COLOR;
     }
     case EViewType::Tool:
     {
