@@ -8062,6 +8062,8 @@ LayerResult GCode::process_layer(
                     // ironing
                     gcode += this->extrude_infill(print,by_region_specific, true);
                 }
+                // Deferred material of this object layer (nonplanar deposition order).
+                gcode += this->emit_deferred_after_layer(instance_to_print.print_object, extruder_id);
 
                 if (this->config().gcode_label_objects) {
                     gcode += std::string("; stop printing object ") +
@@ -8360,8 +8362,6 @@ LayerResult GCode::process_layer(
                         gcode += this->extrude_infill(print, by_region_specific, true);
                     }
                 }
-                // Deferred material of this object layer (nonplanar deposition order).
-                gcode += this->emit_deferred_after_layer(instance_to_print.print_object, extruder_id);
 
                 // --- Shared support ---
                 if (instance_to_print.object_by_extruder.support && !instance_to_print.object_by_extruder.support->empty()) {
@@ -9952,7 +9952,7 @@ std::string GCode::_extrude_piece(const ExtrusionPath &path, const std::string &
     auto absolute_point = [this](const Point3 &p) {
         Vec3d q = this->point_to_gcode(p);
         q.z() += m_config.z_offset.value;
-        return Vec3d(GCodeFormatter::quantize_xyzf(q.x()), GCodeFormatter::quantize_xyzf(q.y()), GCodeFormatter::quantize_xyzf(q.z()));
+        return Vec3d(GCodeFormatter::quantize_xyz(q.x(), m_writer.high_precision()), GCodeFormatter::quantize_xyz(q.y(), m_writer.high_precision()), GCodeFormatter::quantize_xyz(q.z(), m_writer.high_precision()));
     };
     auto check_nonplanar_step = [this, &path](const Vec3d &from, const Vec3d &to) {
         if (!path.nonplanar_source)
@@ -10039,7 +10039,7 @@ std::string GCode::_extrude_piece(const ExtrusionPath &path, const std::string &
     }
     if (z_absolute) {
         // The travel ended with a vertical descent onto the first point.
-        if (GCodeFormatter::quantize_xyzf(m_writer.get_position().z()) != GCodeFormatter::quantize_xyzf(absolute_first_z))
+        if (GCodeFormatter::quantize_xyz(m_writer.get_position().z(), m_config.high_precision_gcode.value) != GCodeFormatter::quantize_xyz(absolute_first_z, m_config.high_precision_gcode.value))
             gcode += m_writer.travel_to_z(absolute_first_z, "set Z for nonplanar extrusion", true);
     } else if (!path.z_contoured && sloped == nullptr) {
         double current_z = m_writer.get_position().z();

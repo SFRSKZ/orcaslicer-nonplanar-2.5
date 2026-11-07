@@ -17837,7 +17837,7 @@ void Plater::calib_nonplanar_ironing(double start, double step)
 {
     if (new_project(false, false, wxString(L"Nonplanar ironing height test")) == wxID_CANCEL)
         return;
-    wxGetApp().mainframe->select_tab(size_t(MainFrame::tp3DEditor));
+    wxGetApp().mainframe->select_tab(TAB_ID_PREPARE);
 
     const boost::filesystem::path dir = boost::filesystem::path(Slic3r::resources_dir()) / "calib" / "nonplanar_ironing";
     TriangleMesh symbol;
