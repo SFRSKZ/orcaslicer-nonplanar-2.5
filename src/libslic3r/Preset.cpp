@@ -1510,11 +1510,9 @@ static std::vector<std::string> s_Preset_print_options{
     "interlocking_boundary_avoidance",
     "interlocking_beam_width",
     "calib_flowrate_topinfill_special_order",
-<<<<<<< 2.5.0
     // IDEX/IQEX parallel print mode (per-print selection)
     "imex_parallel_mode",
     "imex_head_filament_map",
-=======
     // Nonplanar top shells
     "use_nonplanar_layers", "nonplanar_layers_angle", "nonplanar_layers_height", "nonplanar_edge_fix",
     "nonplanar_ironing", "nonplanar_ironing_flow", "nonplanar_ironing_spacing", "nonplanar_ironing_max_angle", "nonplanar_ironing_z_offset", "nonplanar_ironing_slope_press", "nonplanar_ironing_cross", "nonplanar_ironing_tip_diameter", "nonplanar_ironing_min_area", "nonplanar_region_enabled",
@@ -1522,7 +1520,6 @@ static std::vector<std::string> s_Preset_print_options{
     "set_nonplanar_top_surface_direction", "nonplanar_top_surface_direction",
     "nonplanar_gcode_cleanup", "nonplanar_dot_min_length", "nonplanar_travel_clearance",
     "nonplanar_flow_by_thickness", "nonplanar_ironing_last",
->>>>>>> nonplanar
     // Z Anti-Aliasing (ZAA)
     "zaa_enabled",
     "zaa_minimize_perimeter_height",

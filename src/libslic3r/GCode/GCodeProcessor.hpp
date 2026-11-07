@@ -442,7 +442,6 @@ inline constexpr float DEFAULT_FILAMENT_DENSITY = 1.245f;
         // Add a new member here, or neither assignment transfers it.
         template<class Other> void assign(Other &&other)
         {
-<<<<<<< 2.5.0
             filename = std::forward<Other>(other).filename;
             id = std::forward<Other>(other).id;
             moves = std::forward<Other>(other).moves;
@@ -479,6 +478,7 @@ inline constexpr float DEFAULT_FILAMENT_DENSITY = 1.245f;
             print_statistics = std::forward<Other>(other).print_statistics;
             custom_gcode_per_print_z = std::forward<Other>(other).custom_gcode_per_print_z;
             spiral_vase_mode = std::forward<Other>(other).spiral_vase_mode;
+            has_nonplanar = std::forward<Other>(other).has_nonplanar;
             warnings = std::forward<Other>(other).warnings;
             bed_type = std::forward<Other>(other).bed_type;
             gcode_check_result = std::forward<Other>(other).gcode_check_result;
@@ -503,41 +503,6 @@ inline constexpr float DEFAULT_FILAMENT_DENSITY = 1.245f;
             belt_tilt_angle = std::forward<Other>(other).belt_tilt_angle;
             belt_z_origin = std::forward<Other>(other).belt_z_origin;
             machine_frame_transform_active = std::forward<Other>(other).machine_frame_transform_active;
-=======
-            filename = other.filename;
-            id = other.id;
-            moves = other.moves;
-            lines_ends = other.lines_ends;
-            printable_area = other.printable_area;
-            bed_exclude_area = other.bed_exclude_area;
-            wrapping_exclude_area = other.wrapping_exclude_area;
-            toolpath_outside = other.toolpath_outside;
-            label_object_enabled = other.label_object_enabled;
-            long_retraction_when_cut = other.long_retraction_when_cut;
-            timelapse_warning_code = other.timelapse_warning_code;
-            printable_height = other.printable_height;
-            settings_ids = other.settings_ids;
-            filaments_count = other.filaments_count;
-            extruder_colors = other.extruder_colors;
-            filament_diameters = other.filament_diameters;
-            filament_densities = other.filament_densities;
-            filament_costs = other.filament_costs;
-            print_statistics = other.print_statistics;
-            custom_gcode_per_print_z = other.custom_gcode_per_print_z;
-            spiral_vase_mode = other.spiral_vase_mode;
-            has_nonplanar = other.has_nonplanar;
-            warnings = other.warnings;
-            bed_type = other.bed_type;
-            gcode_check_result = other.gcode_check_result;
-            limit_filament_maps = other.limit_filament_maps;
-            filament_printable_reuslt = other.filament_printable_reuslt;
-            layer_filaments = other.layer_filaments;
-            filament_change_sequence = other.filament_change_sequence;
-            nozzle_change_sequence = other.nozzle_change_sequence;
-            optimal_assignment = other.optimal_assignment;
-            filament_change_count_map = other.filament_change_count_map;
-            initial_layer_time = other.initial_layer_time;
->>>>>>> nonplanar
 #if ENABLE_GCODE_VIEWER_STATISTICS
             time = std::forward<Other>(other).time;
 #endif

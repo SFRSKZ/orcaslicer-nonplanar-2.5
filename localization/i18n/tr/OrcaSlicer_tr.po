@@ -39140,7 +39140,6 @@ msgstr ""
 # AI Translated
 #, c-format, boost-format
 #~ msgid ""
-<<<<<<< 2.5.0
 #~ "Plugin \"%s\" is requesting to create the following file:\n"
 #~ "%s"
 #~ msgid_plural ""
@@ -39175,14 +39174,6 @@ msgstr ""
 # AI Translated
 #~ msgid "import SVG failed: could not parse imported svg data."
 #~ msgstr "SVG içe aktarma başarısız oldu: içe aktarılan SVG verileri ayrıştırılamadı."
-=======
-#~ "Cannot print multiple filaments which have large difference of "
-#~ "temperature together. Otherwise, the extruder and nozzle may be blocked "
-#~ "or damaged during printing"
-#~ msgstr ""
-#~ "Sıcaklık farkı çok büyük olan birden fazla filament aynı anda basılamaz. "
-#~ "Aksi takdirde ekstruder ve nozul baskı sırasında tıkanabilir veya zarar "
-#~ "görebilir"
 
 msgid "Nonplanar edge fix"
 msgstr "Nonplanar kenar düzeltmesi"
@@ -39301,12 +39292,5 @@ msgstr "1. diskin yükseklik payı: "
 msgid "Five two-colour discs (body filament 1, symbol filament 2), each ironed at its own height offset. The number of notches on a disc's front edge is its number. Pick the disc whose surface is smooth and whose colour boundary is clean, and use its height offset."
 msgstr "Beş iki renkli disk (gövde 1. filament, sembol 2. filament), her biri kendi yükseklik payıyla ütülenir. Diskin ön kenarındaki çentik sayısı onun numarasıdır. Yüzeyi düz ve renk sınırı temiz olan diski seç, onun yükseklik payını kullan."
 
-msgid "Please input valid values:
--0.03 <= height offset of disc 1
-step > 0
-height offset of disc 5 <= 0.05"
-msgstr "Geçerli değerler gir:
--0.03 <= 1. diskin yükseklik payı
-adım > 0
-5. diskin yükseklik payı <= 0.05"
->>>>>>> nonplanar
+msgid "Please input valid values:\n-0.03 <= height offset of disc 1\nstep > 0\nheight offset of disc 5 <= 0.05"
+msgstr "Geçerli değerler gir:\n-0.03 <= 1. diskin yükseklik payı\nadım > 0\n5. diskin yükseklik payı <= 0.05"

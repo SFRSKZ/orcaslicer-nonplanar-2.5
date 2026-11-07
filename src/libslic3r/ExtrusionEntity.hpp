@@ -7,14 +7,10 @@
 #include "Polyline.hpp"
 
 #include <assert.h>
-<<<<<<< 2.5.0
+#include <atomic>
 #include <cstdint>
 #include <string>
 #include <cstddef>
-=======
-#include <atomic>
-#include <cstdint>
->>>>>>> nonplanar
 #include <string_view>
 #include <numeric>
 #include <vector>

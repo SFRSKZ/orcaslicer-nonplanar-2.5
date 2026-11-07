@@ -3,16 +3,13 @@
 #include <cstdio>
 #include <cstdlib>
 #include "ClipperUtils.hpp"
-<<<<<<< 2.5.0
 #include "Polygon.hpp"
 #include "Point.hpp"
 #include "ExPolygon.hpp"
 #include "ExtrusionEntity.hpp"
 #include "Exception.hpp"
 #include "Flow.hpp"
-=======
 #include "Clipper2Utils.hpp"
->>>>>>> nonplanar
 #include "Print.hpp"
 #include "PrintConfig.hpp"
 #include "ShortestPath.hpp"

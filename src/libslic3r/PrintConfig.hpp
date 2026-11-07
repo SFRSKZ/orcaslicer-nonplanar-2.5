@@ -2088,16 +2088,13 @@ PRINT_CONFIG_CLASS_DERIVED_DEFINE(
     ((ConfigOptionBool,               ooze_prevention))
     ((ConfigOptionString,             filename_format))
     ((ConfigOptionStrings,            post_process))
-<<<<<<< 2.5.0
     ((ConfigOptionStrings,            slicing_pipeline_plugin))
     ((ConfigOptionString,             print_plugin_config_overrides))
-=======
     // OrcaSlicer Nonplanar: G-code clean-up (GCode/NonplanarPostfix)
     ((ConfigOptionBool,               nonplanar_gcode_cleanup))
     ((ConfigOptionBool,               nonplanar_ironing_last))
     ((ConfigOptionFloat,              nonplanar_dot_min_length))
     ((ConfigOptionFloat,              nonplanar_travel_clearance))
->>>>>>> nonplanar
     ((ConfigOptionString,             printer_model))
     ((ConfigOptionFloat,              resolution))
     ((ConfigOptionFloats,             retraction_minimum_travel))
@@ -2176,12 +2173,9 @@ PRINT_CONFIG_CLASS_DERIVED_DEFINE(
     ((ConfigOptionFloatsNullable,     nozzle_volume))
     ((ConfigOptionPoints,             start_end_points))
     ((ConfigOptionEnum<TimelapseType>,    timelapse_type))
-<<<<<<< 2.5.0
     // Corexy farthest-point timelapse (default false → inert for existing printers)
     ((ConfigOptionBool,               farthest_point_timelapse))
-=======
     ((ConfigOptionBool,               timelapse_enabled))
->>>>>>> nonplanar
     ((ConfigOptionString,             thumbnails))
     // BBS: move from PrintObjectConfig
     ((ConfigOptionBool, independent_support_layer_height))

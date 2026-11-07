@@ -28,14 +28,11 @@
 #include "GCode/ThumbnailData.hpp"
 #include "GCode/GCodeProcessor.hpp"
 #include "MultiMaterialSegmentation.hpp"
-<<<<<<< 2.5.0
 #include "BeltBrim.hpp"
 #include "BeltTransform.hpp"
 #include "ObjectID.hpp"
 #include "TriangleSelector.hpp"
-=======
 #include "NonplanarSurface.hpp"
->>>>>>> nonplanar
 #include "libslic3r.h"
 
 #include <Eigen/Geometry>
@@ -610,7 +607,6 @@ private:
     std::vector<std::set<int>> detect_extruder_geometric_unprintables() const;
 
     void slice_volumes();
-<<<<<<< 2.5.0
     // Belt mode: shift the sliced layer grid (layer print_z and the belt floor
     // clipping shift) by delta, used by Print::_align_belt_purge_layers() to
     // snap the purge prism's layers onto the printed objects' layer grid.
@@ -644,13 +640,11 @@ private:
     // regenerate per-layer content over m_layers only, so a stale stash would
     // otherwise be restored on top of fresh content); the plan calls it too.
     void   belt_undo_purge_plan() { belt_restore_dropped_fills(); belt_restore_truncated_layers(); }
-=======
     // Nonplanar target surfaces (ported from PrusaSlicer Nonplanar).
     bool check_nonplanar_collisions(NonplanarSurface &surface);
     void find_nonplanar_surfaces();
     void detect_nonplanar_surfaces();
     void project_nonplanar_surfaces();
->>>>>>> nonplanar
     //BBS
     ExPolygons _shrink_contour_holes(double contour_delta, double hole_delta, const ExPolygons& polys) const;
     // BBS

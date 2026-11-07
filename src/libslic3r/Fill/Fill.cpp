@@ -334,7 +334,6 @@ struct SurfaceFillParams
     // For Gyroid: when true, use the parameterized "optimized" wave.
     bool gyroid_optimized = false;
 
-<<<<<<< 2.5.0
     // For TPMS: grade the density from the surface to the interior of the object.
     AdaptiveInfillMode     adaptive_infill_mode          = AdaptiveInfillMode::Disabled;
     float                adaptive_infill_interior_density  = 0.f;
@@ -348,13 +347,11 @@ struct SurfaceFillParams
 
     // Orca: forced print order of surface fill loops/fragments for center-based patterns.
     SurfaceFillOrder fill_order = SurfaceFillOrder::Default;
-=======
 	// Nonplanar material shell identity (target surface, shell offset).
 	// Fills of different shells must never be merged into one group: the
 	// group keeps the metadata of its first surface only.
 	int 			nonplanar_surface_id = -1;
 	float 			nonplanar_shell_offset = -1.f;
->>>>>>> nonplanar
 
 	bool operator<(const SurfaceFillParams &rhs) const {
 #define RETURN_COMPARE_NON_EQUAL(KEY) if (this->KEY < rhs.KEY) return true; if (this->KEY > rhs.KEY) return false;
@@ -389,7 +386,6 @@ struct SurfaceFillParams
 		RETURN_COMPARE_NON_EQUAL(skin_infill_depth);
         RETURN_COMPARE_NON_EQUAL(infill_overhang_angle);
 		RETURN_COMPARE_NON_EQUAL(gyroid_optimized);
-<<<<<<< 2.5.0
 		RETURN_COMPARE_NON_EQUAL(adaptive_infill_mode);
 		RETURN_COMPARE_NON_EQUAL(adaptive_infill_interior_density);
 		RETURN_COMPARE_NON_EQUAL(adaptive_infill_gradient);
@@ -397,10 +393,8 @@ struct SurfaceFillParams
         RETURN_COMPARE_NON_EQUAL(center_of_surface_pattern);
         RETURN_COMPARE_NON_EQUAL(separated_infills);
 		RETURN_COMPARE_NON_EQUAL_TYPED(unsigned, fill_order);
-=======
 		RETURN_COMPARE_NON_EQUAL(nonplanar_surface_id);
 		RETURN_COMPARE_NON_EQUAL(nonplanar_shell_offset);
->>>>>>> nonplanar
 
 		return false;
 	}
@@ -427,7 +421,6 @@ struct SurfaceFillParams
 				this->infill_lock_depth       == rhs.infill_lock_depth       &&
 				this->skin_infill_depth       == rhs.skin_infill_depth       &&
                 this->infill_overhang_angle   == rhs.infill_overhang_angle   &&
-<<<<<<< 2.5.0
                 this->center_of_surface_pattern == rhs.center_of_surface_pattern &&
                 this->separated_infills       == rhs.separated_infills &&
                 this->gyroid_optimized        == rhs.gyroid_optimized        &&
@@ -435,12 +428,9 @@ struct SurfaceFillParams
                 this->adaptive_infill_interior_density   == rhs.adaptive_infill_interior_density   &&
                 this->adaptive_infill_gradient  == rhs.adaptive_infill_gradient  &&
                 this->smooth_factor           == rhs.smooth_factor           &&
-                this->fill_order              == rhs.fill_order;
-=======
-                this->gyroid_optimized        == rhs.gyroid_optimized        &&
+                this->fill_order              == rhs.fill_order &&
 				this->nonplanar_surface_id    == rhs.nonplanar_surface_id    &&
 				this->nonplanar_shell_offset  == rhs.nonplanar_shell_offset;
->>>>>>> nonplanar
 	}
 };
 

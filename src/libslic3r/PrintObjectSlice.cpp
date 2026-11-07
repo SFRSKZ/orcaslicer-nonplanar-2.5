@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <boost/log/trivial.hpp>
-<<<<<<< 2.5.0
 #include <limits>
 
 #include <cstddef>
@@ -11,11 +10,9 @@
 #include <math.h>
 #include <cmath>
 #include <iterator>
-=======
 
 #include <cstdlib>
 
->>>>>>> nonplanar
 #include <tbb/parallel_for.h>
 #include <vector>
 #include <utility>
@@ -41,16 +38,13 @@
 #include "PrintConfig.hpp"
 #include "PrintBase.hpp"
 #include "ShortestPath.hpp"
-<<<<<<< 2.5.0
 #include "libslic3r.h"
 #include "TriangleMeshSlicer.hpp"
 #include "TriangleMesh.hpp"
 #include "Slicing.hpp"
 #include "Surface.hpp"
 #include "Utils.hpp"
-=======
 #include "AABBMesh.hpp"
->>>>>>> nonplanar
 #include "libslic3r/Feature/Interlocking/InterlockingGenerator.hpp"
 #include "Config.hpp"
 #include "SurfaceCollection.hpp"
@@ -916,7 +910,6 @@ void PrintObject::slice()
     m_layers = new_layers(this, generate_object_layers(m_slicing_params, layer_height_profile, m_config.precise_z_height.value));
     this->slice_volumes();
     m_print->throw_if_canceled();
-<<<<<<< 2.5.0
 
     // Belt floor Z-shift: where is the belt surface in final slicer space?
     //
@@ -931,10 +924,8 @@ void PrintObject::slice()
         m_slicing_params.belt_floor_z_shift = z_shift_val;
     }
 
-=======
     this->find_nonplanar_surfaces();
     m_print->throw_if_canceled();
->>>>>>> nonplanar
     int firstLayerReplacedBy = 0;
 
 #if 0

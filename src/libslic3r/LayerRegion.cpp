@@ -18,7 +18,6 @@
 #include "BoundingBox.hpp"
 #include "SVG.hpp"
 #include "Algorithm/RegionExpansion.hpp"
-<<<<<<< 2.5.0
 #include "libslic3r.h"
 #include "Utils.hpp"
 
@@ -33,13 +32,11 @@
 #include <stdexcept>
 #include <math.h>
 #include <cassert>
-=======
 
 #include <cstdlib>
 #include <cstdio>
 #include <iostream>
 #include <sstream>
->>>>>>> nonplanar
 #include <string>
 #include <map>
 #include <unordered_map>
@@ -302,16 +299,12 @@ void LayerRegion::make_perimeters_generator(const SurfaceCollection &slices, con
         fill_no_overlap
     );
     
-<<<<<<< 2.5.0
-    if (this->layer()->upper_layer != NULL)
-=======
     // Nonplanar shells do not rest on the planar layers next to their home
     // layer: neither overhang nor top-surface detection against them.
     if (planar_neighbours && this->layer()->lower_layer != nullptr)
         // Cummulative sum of polygons over all the regions.
         g.lower_slices = &this->layer()->lower_layer->lslices;
     if (planar_neighbours && this->layer()->upper_layer != NULL)
->>>>>>> nonplanar
         g.upper_slices = &this->layer()->upper_layer->lslices;
 
     int region_id = this->region().print_object_region_id();

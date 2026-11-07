@@ -23,12 +23,9 @@
 #include "GCode/WipeTower.hpp"
 #include "GCode/SeamPlacer.hpp"
 #include "GCode/GCodeProcessor.hpp"
-<<<<<<< 2.5.0
-=======
 #include "GCode/NonplanarPostfix.hpp"
 #include "GCode/NonplanarFlow.hpp"
 #include "EdgeGrid.hpp"
->>>>>>> nonplanar
 #include "GCode/ThumbnailData.hpp"
 #include "libslic3r/ObjectID.hpp"
 #include "GCode/ExtrusionProcessor.hpp"
@@ -49,10 +46,7 @@
 #include <memory>
 #include <map>
 #include <unordered_map>
-<<<<<<< 2.5.0
 #include <optional>
-=======
->>>>>>> nonplanar
 #include <set>
 #include <string>
 #include <cfloat>
@@ -878,7 +872,6 @@ protected:
     Point3                              m_last_pos;
     bool                                m_last_pos_defined;
 
-<<<<<<< 2.5.0
     struct ToolchangePositionState
     {
         Vec2d emitted_xy{Vec2d::Zero()};
@@ -890,7 +883,6 @@ protected:
     std::optional<ToolchangePositionState> capture_toolchange_position();
     void synchronize_toolchange_position(const ToolchangePositionState &before,
                                          const std::string             &emitted_gcode);
-=======
     // ---- Nonplanar top shells (ported from PrusaSlicer Nonplanar) ----
     // Deposited heights for the lift of nonplanar travels (only as high as
     // the measured hotend needs above the material along the travel).
@@ -943,7 +935,6 @@ protected:
     std::string                         emit_deferred_material(int slot, unsigned int extruder_id);
     // Emit the deferred slots that belong after this object layer.
     std::string                         emit_deferred_after_layer(const PrintObject &print_object, unsigned int extruder_id);
->>>>>>> nonplanar
 
     std::unique_ptr<CoolingBuffer>      m_cooling_buffer;
     std::unique_ptr<SpiralVase>         m_spiral_vase;

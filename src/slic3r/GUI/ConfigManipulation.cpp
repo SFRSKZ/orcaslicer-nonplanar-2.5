@@ -1367,10 +1367,7 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig *config, in
     toggle_line("infill_overhang_angle", config->opt_enum<InfillPattern>("sparse_infill_pattern") == InfillPattern::ipLateralHoneycomb, -1, _L("Select the Lateral Honeycomb sparse infill pattern to use this setting."));
 
     std::string printer_type = wxGetApp().preset_bundle->printers.get_edited_preset().get_printer_type(wxGetApp().preset_bundle);
-<<<<<<< 2.5.0
     toggle_line("enable_wrapping_detection", DevPrinterConfigUtil::support_wrapping_detection(printer_type), -1, _L("The selected printer does not support wrapping detection."));
-=======
-    toggle_line("enable_wrapping_detection", DevPrinterConfigUtil::support_wrapping_detection(printer_type));
 
     // Nonplanar: the edge extension and the nonplanar ironing work on nonplanar top
     // shells, so they are only meaningful while nonplanar layers are enabled.
@@ -1388,7 +1385,6 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig *config, in
     const bool cleanup_on = nonplanar_on && config->has("nonplanar_gcode_cleanup") && config->opt_bool("nonplanar_gcode_cleanup");
     toggle_line("nonplanar_dot_min_length", cleanup_on);
     toggle_line("nonplanar_travel_clearance", cleanup_on);
->>>>>>> nonplanar
 }
 
 void ConfigManipulation::update_print_sla_config(DynamicPrintConfig* config, const bool is_global_config/* = false*/)

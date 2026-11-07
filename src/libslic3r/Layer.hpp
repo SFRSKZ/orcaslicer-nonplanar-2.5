@@ -9,7 +9,6 @@
 #include "Flow.hpp"
 #include "SurfaceCollection.hpp"
 #include "ExtrusionEntityCollection.hpp"
-<<<<<<< 2.5.0
 #include <vector>
 #include <cstddef>
 #include <algorithm>
@@ -20,10 +19,8 @@
 namespace Slic3r { class ExtrusionLoop; }
 namespace Slic3r { class ExtrusionMultiPath; }
 namespace Slic3r { class ExtrusionPath; }
-=======
 #include "NonplanarSurface.hpp"
 #include "BoundingBox.hpp"
->>>>>>> nonplanar
 namespace Slic3r {
 
 class ExPolygon;
@@ -202,19 +199,16 @@ public:
     ExPolygons 				 lslices;
     ExPolygons 				 lslices_extrudable;  // BBS: the extrudable part of lslices used for tree support
     std::vector<BoundingBox> lslices_bboxes;
-<<<<<<< 2.5.0
     // Orca: for separated infills / per-model centering / octree infills. Aligned with lslices: for each
     // island, the 3D connected body (across all layers) it belongs to, indexing
     // PrintObject::separated_body_bboxes(). Populated by PrintObject::prepare_infill() only when needed.
     std::vector<size_t>      lslices_separated_component_ids;
-=======
     // Nonplanar: the layer's object geometry before conformal shell strips were
     // moved to their home layers (PrintObject::detect_nonplanar_surfaces), per
     // region and merged.  Support generation works on it, so that it sees the
     // real object.  Empty if no strips were moved.
     std::vector<ExPolygons>  region_slices_before_nonplanar;
     ExPolygons               lslices_before_nonplanar;
->>>>>>> nonplanar
 
     // BBS
     ExPolygons              loverhangs;
@@ -253,16 +247,13 @@ public:
     Polylines               generate_sparse_infill_polylines_for_anchoring(const FillAdaptive::RegionOctrees *fill_octrees,
                                                                            FillLightning::Generator* lightning_generator) const;
     void 					make_ironing();
-<<<<<<< 2.5.0
     // Returns the filament id (1-based) the region is ironed with, or -1 when the
     // region is not ironed.
     static int              choose_ironing_extruder(const PrintRegionConfig &cfg,
                                                     bool spiral_mode,
                                                     bool is_topmost_layer);
-=======
     // Nonplanar ironing of the visible conformal shell (NonplanarIroning.cpp).
     void 					make_nonplanar_ironing();
->>>>>>> nonplanar
     void                    make_contour_z(const sla::IndexedMesh &mesh);
 
     void                    export_region_slices_to_svg(const char *path) const;

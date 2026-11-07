@@ -21,15 +21,12 @@ add_executable(${_TEST_NAME}_tests
 	test_imex_mode_gcode.cpp
 	test_imex_slice_offset.cpp
 	test_model.cpp
-<<<<<<< 2.5.0
 	test_multifilament.cpp
 	test_multimaterial_segmentation.cpp
 	test_perimeters.cpp
 	# Seam geometry and pipeline regressions share the existing Print fixtures.
 	test_precise_seam.cpp
-=======
 	test_nonplanar.cpp
->>>>>>> nonplanar
 	test_print.cpp
 	test_printobject.cpp
 	test_mixed_filament.cpp

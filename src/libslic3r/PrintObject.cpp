@@ -12,12 +12,9 @@
 
 #include "BoundingBox.hpp"
 #include "ClipperUtils.hpp"
-<<<<<<< 2.5.0
 #include "ConnectedBodies.hpp"
-=======
 #include "Clipper2Utils.hpp"
 #include "ElephantFootCompensation.hpp"
->>>>>>> nonplanar
 #include "Geometry.hpp"
 #include "I18N.hpp"
 #include "Layer.hpp"
@@ -974,9 +971,6 @@ void PrintObject::detect_overhangs_for_lift()
     }
 }
 
-<<<<<<< 2.5.0
-void PrintObject::generate_support_material(bool with_belt_brim)
-=======
 // Nonplanar: while support is generated, each layer shows the object as it is
 // at its height: the outline before the conformal shell strips were moved, the
 // strips back in their source layer (as internal area) and no strips moved in
@@ -1031,8 +1025,7 @@ private:
     std::vector<Saved> m_saved;
 };
 
-void PrintObject::generate_support_material()
->>>>>>> nonplanar
+void PrintObject::generate_support_material(bool with_belt_brim)
 {
     if (this->set_started(posSupportMaterial)) {
         this->clear_support_layers();
@@ -1984,7 +1977,6 @@ bool PrintObject::invalidate_step(PrintObjectStep step)
         invalidated |= this->invalidate_steps({ posNonplanarProjection, posIroning, posContouring, posSimplifyInfill });
         invalidated |= m_print->invalidate_steps({ psSkirtBrim });
     } else if (step == posSlice) {
-<<<<<<< 2.5.0
         // posSimplifySupportPath is listed with posSupportMaterial: invalidate_steps() does not
         // propagate, so without it a re-slice regenerated the supports but kept the step done,
         // and the new support paths were exported unsimplified, unlike a fresh slice.
@@ -1992,10 +1984,7 @@ bool PrintObject::invalidate_step(PrintObjectStep step)
 		// starts over empty: without it here the step stayed done and the lift logic in
 		// GCode::needs_retraction() had no overhangs to test against until something else
 		// invalidated it.
-		invalidated |= this->invalidate_steps({ posPerimeters, posPrepareInfill, posInfill, posIroning, posContouring, posSupportMaterial, posSimplifyPath, posSimplifyInfill, posSimplifySupportPath, posDetectOverhangsForLift });
-=======
-		invalidated |= this->invalidate_steps({ posPerimeters, posPrepareInfill, posInfill, posNonplanarProjection, posIroning, posContouring, posSupportMaterial, posSimplifyPath, posSimplifyInfill });
->>>>>>> nonplanar
+		invalidated |= this->invalidate_steps({ posPerimeters, posPrepareInfill, posInfill, posNonplanarProjection, posIroning, posContouring, posSupportMaterial, posSimplifyPath, posSimplifyInfill, posSimplifySupportPath, posDetectOverhangsForLift });
         invalidated |= m_print->invalidate_steps({ psSkirtBrim });
         m_slicing_params.valid = false;
         // The exact belt_floor_z_shift is recomputed when slice() runs again.
@@ -2130,11 +2119,7 @@ void PrintObject::detect_surfaces_type()
                     if (upper_layer) {
                         ExPolygons upper_slices = interface_shells ?
                             diff_ex(layerm_slices_surfaces, upper_layer->m_regions[region_id]->slices.surfaces, ApplySafetyOffset::Yes) :
-<<<<<<< 2.5.0
                             diff_ex_by_piece(layerm_slices_surfaces, to_polygons(upper_layer->lslices), ApplySafetyOffset::Yes);
-                        surfaces_append(top, opening_ex(upper_slices, offset), stTop);
-=======
-                            diff_ex(layerm_slices_surfaces, upper_layer->lslices, ApplySafetyOffset::Yes);
                         if (nonplanar_surfaces.empty())
                             surfaces_append(top, opening_ex(upper_slices, offset), stTop);
                         else
@@ -2142,7 +2127,6 @@ void PrintObject::detect_surfaces_type()
                     } else if (! nonplanar_surfaces.empty()) {
                         // if no upper layer, all planar surfaces of this one are solid
                         surfaces_append(top, union_ex(planar_surfaces), stTop);
->>>>>>> nonplanar
                     } else {
                         // if no upper layer, all surfaces of this one are solid
                         // we clone surfaces because we're going to clear the slices collection
@@ -2167,14 +2151,10 @@ void PrintObject::detect_surfaces_type()
                         surfaces_append(
                             bottom,
                             opening_ex(
-<<<<<<< 2.5.0
-                                diff_ex_by_piece(layerm_slices_surfaces, to_polygons(lower_layer->lslices), ApplySafetyOffset::Yes),
-=======
                                 nonplanar_surfaces.empty() ?
-                                    diff_ex(layerm_slices_surfaces, lower_layer->lslices, ApplySafetyOffset::Yes) :
-                                    diff_ex(diff_ex(layerm_slices_surfaces, lower_layer->lslices, ApplySafetyOffset::Yes),
+                                    diff_ex_by_piece(layerm_slices_surfaces, to_polygons(lower_layer->lslices), ApplySafetyOffset::Yes) :
+                                    diff_ex(diff_ex_by_piece(layerm_slices_surfaces, to_polygons(lower_layer->lslices), ApplySafetyOffset::Yes),
                                             nonplanar_surfaces, ApplySafetyOffset::Yes),
->>>>>>> nonplanar
                                 offset),
                             surface_type_bottom_other);
                         // if user requested internal shells, we need to identify surfaces
@@ -2336,12 +2316,8 @@ void PrintObject::detect_surfaces_type()
                     {
                         Polygons topbottom = to_polygons(top);
                         polygons_append(topbottom, to_polygons(bottom));
-<<<<<<< 2.5.0
-                        surfaces_append(surfaces_out, diff_ex_by_piece(surfaces_prev_expolys, topbottom), stInternal);
-=======
                         polygons_append(topbottom, to_polygons(nonplanar_surfaces));
-                        surfaces_append(surfaces_out, diff_ex(surfaces_prev_expolys, topbottom), stInternal);
->>>>>>> nonplanar
+                        surfaces_append(surfaces_out, diff_ex_by_piece(surfaces_prev_expolys, topbottom), stInternal);
                     }
 
                     surfaces_append(surfaces_out, std::move(top));
@@ -3365,12 +3341,11 @@ void PrintObject::discover_vertical_shells()
                     static size_t debug_idx = 0;
                     ++ debug_idx;
 #endif /* SLIC3R_DEBUG_SLICE_PROCESSING */
-<<<<<<< 2.5.0
                     // The top surfaces, the bottom surfaces and the holes are independent of each other.
                     tbb::parallel_invoke(
                         [&]() {
                             for (size_t region_id = 0; region_id < num_regions; ++ region_id)
-                                append(cache.top_surfaces, offset(layer.m_regions[region_id]->slices.filter_by_type(stTop), top_bottom_expansion(region_id)));
+                                append(cache.top_surfaces, offset(layer.m_regions[region_id]->slices.filter_by_types({ stTop, stTopNonplanar }), top_bottom_expansion(region_id)));
 //                              append(cache.top_surfaces, offset(layerm.fill_surfaces.filter_by_type(stTop), top_bottom_expansion));
                             // Save some computing time by reducing the number of polygons.
                             cache.top_surfaces = union_(cache.top_surfaces);
@@ -3407,40 +3382,6 @@ void PrintObject::discover_vertical_shells()
                             if (perimeter_offset > 0.) {
                                 // The layer.lslices are forced to merge by expanding them first.
                                 polygons_append(cache.holes, offset2(layer.lslices, 0.3f * perimeter_min_spacing, - perimeter_offset - 0.3f * perimeter_min_spacing));
-=======
-                    for (size_t region_id = 0; region_id < num_regions; ++ region_id) {
-                        LayerRegion &layerm               = *layer.m_regions[region_id];
-                        float        top_bottom_expansion = float(layerm.flow(frSolidInfill).scaled_spacing()) * top_bottom_expansion_coeff;
-                        // Top surfaces.
-                        append(cache.top_surfaces, offset(layerm.slices.filter_by_types({ stTop, stTopNonplanar }), top_bottom_expansion));
-//                        append(cache.top_surfaces, offset(layerm.fill_surfaces.filter_by_type(stTop), top_bottom_expansion));
-                        // Bottom surfaces.
-                        append(cache.bottom_surfaces, offset(layerm.slices.filter_by_types(surfaces_bottom), top_bottom_expansion));
-//                        append(cache.bottom_surfaces, offset(layerm.fill_surfaces.filter_by_types(surfaces_bottom), top_bottom_expansion));
-                        // Calculate the maximum perimeter offset as if the slice was extruded with a single extruder only.
-                        // First find the maxium number of perimeters per region slice.
-                        unsigned int perimeters = 0;
-                        for (Surface &s : layerm.slices.surfaces)
-                            perimeters = std::max<unsigned int>(perimeters, s.extra_perimeters);
-                        perimeters += layerm.region().config().wall_loops.value;
-                        // Then calculate the infill offset.
-                        if (perimeters > 0) {
-                            Flow extflow = layerm.flow(frExternalPerimeter);
-                            Flow flow    = layerm.flow(frPerimeter);
-                            perimeter_offset = std::max(perimeter_offset,
-                                0.5f * float(extflow.scaled_width() + extflow.scaled_spacing()) + (float(perimeters) - 1.f) * flow.scaled_spacing());
-                            perimeter_min_spacing = std::min(perimeter_min_spacing, float(std::min(extflow.scaled_spacing(), flow.scaled_spacing())));
-                        }
-                        polygons_append(cache.holes, to_polygons(layerm.fill_expolygons));
-                    }
-                    // Save some computing time by reducing the number of polygons.
-                    cache.top_surfaces    = union_(cache.top_surfaces);
-                    cache.bottom_surfaces = union_(cache.bottom_surfaces);
-                    // For a multi-material print, simulate perimeter / infill split as if only a single extruder has been used for the whole print.
-                    if (perimeter_offset > 0.) {
-                        // The layer.lslices are forced to merge by expanding them first.
-                        polygons_append(cache.holes, offset2(layer.lslices, 0.3f * perimeter_min_spacing, - perimeter_offset - 0.3f * perimeter_min_spacing));
->>>>>>> nonplanar
 #ifdef SLIC3R_DEBUG_SLICE_PROCESSING
                                 {
                                     Slic3r::SVG svg(debug_out_path("discover_vertical_shells-extra-holes-%d.svg", debug_idx), get_extents(layer.lslices));
