@@ -58,6 +58,7 @@
 #include "IMEXHelpers.hpp"
 #include "IMEXZones.hpp"
 #include "Print.hpp"
+#include "NonplanarSchedule.hpp"
 #include "BoundingBox.hpp"
 #include "Brim.hpp"
 #include "ClipperUtils.hpp"
@@ -3267,7 +3268,83 @@ std::map<ObjectID, unsigned int> getObjectExtruderMap(const Print& print) {
 }
 
 // Slicing process, running at a background thread.
+// A nonplanar target surface that cannot be planned (hotend collision, too steep a climb,
+// failed internal check) does not stop the slice: that surface is printed planar, the
+// object is sliced again and a warning names the height.  Other errors are passed on.
 void Print::process(long long *time_cost_with_cache, bool use_cache)
+{
+    for (int attempt = 1;; ++ attempt) {
+        try {
+            this->process_once(time_cost_with_cache, use_cache);
+            return;
+        } catch (const Slic3r::SlicingError &error) {
+            const bool retry = ! use_cache && attempt < 8 && this->nonplanar_fallback(error);
+            if (std::getenv("NONPLANAR_FALLBACK_TRACE") != nullptr)
+                std::fprintf(stderr, "nonplanar fallback attempt %d: %s -> %s\n", attempt, error.what(), retry ? "retry" : "give up");
+            if (! retry)
+                throw;
+            BOOST_LOG_TRIVIAL(warning) << "Nonplanar fallback, slicing again (attempt " << attempt + 1 << "): " << error.what();
+        }
+    }
+}
+
+bool Print::nonplanar_fallback(const SlicingError &error)
+{
+    PrintObject *object = nullptr;
+    for (PrintObject *o : m_objects)
+        if (o->id().id == error.objectId())
+            object = o;
+    double z = 0.;
+    if (object == nullptr || ! object->config().use_nonplanar_layers.value || ! nonplanar_error_height(error.what(), z))
+        return false;
+    // Surfaces are in the object frame, the error height is a print height.
+    const double zo = z - object->slicing_parameters().object_print_z_min;
+    auto excluded = [object](const NonplanarSurface &s) {
+        for (const PrintObject::NonplanarFallback &f : object->m_nonplanar_fallbacks)
+            if (std::abs(f.stats.min.x - s.stats.min.x) < 1e-4 && std::abs(f.stats.min.y - s.stats.min.y) < 1e-4 &&
+                std::abs(f.stats.min.z - s.stats.min.z) < 1e-4 && std::abs(f.stats.max.x - s.stats.max.x) < 1e-4 &&
+                std::abs(f.stats.max.y - s.stats.max.y) < 1e-4 && std::abs(f.stats.max.z - s.stats.max.z) < 1e-4)
+                return true;
+        return false;
+    };
+    // The surface whose height range holds the error height, or the nearest one within 2 mm
+    // (the shells below a surface reach under its lowest point).
+    const NonplanarSurface *best = nullptr;
+    double best_dist = 2.;
+    for (const NonplanarSurface &s : object->m_nonplanar_surfaces) {
+        if (excluded(s))
+            continue;
+        const double dist = zo < s.stats.min.z ? s.stats.min.z - zo : zo > s.stats.max.z ? zo - s.stats.max.z : 0.;
+        if (dist <= best_dist) {
+            best      = &s;
+            best_dist = dist;
+        }
+    }
+    if (best == nullptr)
+        return false;
+    const std::string what = error.what();
+    PrintObject::NonplanarFallback fallback;
+    fallback.stats  = best->stats;
+    fallback.z      = z;
+    fallback.reason = what.find("collision") != std::string::npos ? "no print order avoids a hotend collision there" :
+                      what.find("climb more than 12") != std::string::npos ? "a nonplanar line would have to climb more than 12° there" :
+                                                                    "an internal check failed there";
+    std::vector<PrintObject::NonplanarFallback> fallbacks = object->m_nonplanar_fallbacks;
+    fallbacks.push_back(fallback);
+    {
+        // The worker thread invalidates its own object: the cancel callback would stop the
+        // worker itself, so it is switched off while the steps are reset.
+        std::scoped_lock<std::mutex> lock(this->state_mutex());
+        const auto cancel = this->cancel_callback();
+        this->set_cancel_callback([]() {});
+        object->invalidate_step(posSlice);
+        this->set_cancel_callback(cancel);
+    }
+    object->m_nonplanar_fallbacks = std::move(fallbacks);
+    return true;
+}
+
+void Print::process_once(long long *time_cost_with_cache, bool use_cache)
 {
     long long start_time = 0, end_time = 0;
     if (time_cost_with_cache)
@@ -3939,6 +4016,18 @@ void Print::process(long long *time_cost_with_cache, bool use_cache)
         }
     }
 
+    // Nonplanar deposition order: planned here, so that a surface the planner cannot
+    // order is printed planar (Print::process()) instead of failing the G-code export.
+    if (! use_cache) {
+        const char *order_switch = std::getenv("NONPLANAR_DEPOSITION_ORDER");
+        if (order_switch == nullptr || std::string(order_switch) != "0")
+            for (PrintObject *obj : m_objects)
+                if (obj->config().use_nonplanar_layers.value && ! obj->m_nonplanar_plan) {
+                    this->throw_if_canceled();
+                    obj->m_nonplanar_plan = std::make_shared<NonplanarDeferral>(plan_nonplanar_deferral(*obj, NonplanarClearanceModel()));
+                }
+    }
+
     // BBS
     bool has_adaptive_layer_height = false;
     for (PrintObject* obj : m_objects) {
@@ -3998,26 +4087,43 @@ std::string Print::export_gcode(const std::string& path_template, GCodeProcessor
         message = L("Generating G-code");
     this->set_status(80, message);
 
-    // The following line may die for multiple reasons.
-    // Factory: use BeltGCode for belt printers, plain GCode otherwise.
+    // The final nonplanar checks run while the G-code is written.  A surface that fails
+    // there is printed planar as well: the object is sliced again and the export repeated.
+    // The GUI shows only the model shells at this point, so slicing again here is safe.
     std::unique_ptr<GCode> gcode;
-    if (m_config.belt_printer.value)
-        gcode = std::make_unique<BeltGCode>();
-    else
-        gcode = std::make_unique<GCode>();
-    //BBS: compute plate offset for gcode-generator
-    const Vec3d origin = this->get_plate_origin();
-    // IMEX firmware-managed zones: writer offset gets the IMEX shift so emitted gcode is
-    // centered at bed origin; processor offset stays at plate_origin so the gcode-preview
-    // visualizer renders the centered slice at the bed center rather than the prepare-view
-    // zone placement. Both arms reduce to set_gcode_offset() semantics when shift is zero.
-    // Derived here rather than read as pushed-in state, so an exporter reached without a
-    // preceding process() (or after a config change that only invalidated psGCodeExport)
-    // still emits in the frame the current config asks for.
-    this->update_imex_slice_offset();
-    const Vec2d imex_off = this->get_imex_slice_offset();
-    gcode->set_gcode_offset_with_imex_shift(origin(0), origin(1), imex_off.x(), imex_off.y());
-    gcode->do_export(this, path.c_str(), result, thumbnail_cb);
+    for (int attempt = 1;; ++ attempt) {
+        // The following line may die for multiple reasons.
+        // Factory: use BeltGCode for belt printers, plain GCode otherwise.
+        if (m_config.belt_printer.value)
+            gcode = std::make_unique<BeltGCode>();
+        else
+            gcode = std::make_unique<GCode>();
+        //BBS: compute plate offset for gcode-generator
+        const Vec3d origin = this->get_plate_origin();
+        // IMEX firmware-managed zones: writer offset gets the IMEX shift so emitted gcode is
+        // centered at bed origin; processor offset stays at plate_origin so the gcode-preview
+        // visualizer renders the centered slice at the bed center rather than the prepare-view
+        // zone placement. Both arms reduce to set_gcode_offset() semantics when shift is zero.
+        // Derived here rather than read as pushed-in state, so an exporter reached without a
+        // preceding process() (or after a config change that only invalidated psGCodeExport)
+        // still emits in the frame the current config asks for.
+        this->update_imex_slice_offset();
+        const Vec2d imex_off = this->get_imex_slice_offset();
+        gcode->set_gcode_offset_with_imex_shift(origin(0), origin(1), imex_off.x(), imex_off.y());
+        try {
+            gcode->do_export(this, path.c_str(), result, thumbnail_cb);
+            break;
+        } catch (const Slic3r::SlicingError &error) {
+            const bool retry = attempt < 8 && this->nonplanar_fallback(error);
+            if (std::getenv("NONPLANAR_FALLBACK_TRACE") != nullptr)
+                std::fprintf(stderr, "nonplanar fallback (G-code) attempt %d: %s -> %s\n", attempt, error.what(), retry ? "retry" : "give up");
+            if (! retry)
+                throw;
+            gcode.reset();
+            this->process();
+            this->set_status(80, message);
+        }
+    }
     gcode->export_layer_filaments(result);
     //BBS
     if (result != nullptr) {

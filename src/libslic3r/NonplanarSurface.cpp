@@ -327,6 +327,19 @@ std::string nonplanar_location(double z, size_t layer_id)
     return buf;
 }
 
+bool nonplanar_error_height(const std::string &message, double &z)
+{
+    // Reads back the height written by nonplanar_location().
+    const std::string key = " at height ";
+    const size_t pos = message.find(key);
+    if (pos == std::string::npos)
+        return false;
+    const char *begin = message.c_str() + pos + key.size();
+    char *end = nullptr;
+    z = std::strtod(begin, &end);
+    return end != begin && std::strncmp(end, " mm", 3) == 0;
+}
+
 double nonplanar_suggested_angle(double angle)
 {
     return angle > 10. + EPSILON ? 10. : std::max(1., std::floor(angle) - 2.);

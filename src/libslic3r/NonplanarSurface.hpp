@@ -70,6 +70,8 @@ class NonplanarSurface
 // goes to the log and, for internal checks, in short into the message.
 // " at height 8.40 mm (layer 43)"; layer_id is 0-based.
 std::string nonplanar_location(double z, size_t layer_id);
+// Height written by nonplanar_location() into a slicing error message.
+bool nonplanar_error_height(const std::string &message, double &z);
 // Edge extension (setting "Nonplanar edge fix", on by default; NONPLANAR_EDGE_RING=0/1
 // forces it off/on for tests): how far (mm) beyond the target surface a nonplanar shell
 // may take over the thin planar remainder next to the wall, so the shell's outer line

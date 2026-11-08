@@ -57,6 +57,7 @@
 namespace Slic3r {
 
 class SlicingErrors;
+struct NonplanarDeferral;
 
 class GCode;
 class Layer;
@@ -379,6 +380,14 @@ public:
     const Transform3d&           trafo() const          { return m_trafo; }
     // Trafo with the center_offset() applied after the transformation, to center the object in XY before slicing.
     NonplanarSurfaces            nonplanar_surfaces()   { return m_nonplanar_surfaces; }
+    // Nonplanar deposition order, planned at the end of Print::process() (nullptr: not planned yet).
+    const NonplanarDeferral*     nonplanar_plan() const { return m_nonplanar_plan.get(); }
+    // A target surface that could not be printed nonplanar and is printed planar instead.
+    struct NonplanarFallback {
+        mesh_stats  stats;
+        double      z { 0. };   // print height where slicing failed
+        std::string reason;
+    };
     Transform3d                  trafo_centered() const
         { Transform3d t = this->trafo(); t.pretranslate(Vec3d(- unscale<double>(m_center_offset.x()), - unscale<double>(m_center_offset.y()), 0)); return t; }
     // trafo_centered() with the belt pre-slice transforms applied: the frame the layers were sliced in (Layer::slice_z).
@@ -713,6 +722,10 @@ private:
     // so that next call to make_perimeters() performs a union() before computing loops
     bool                    				m_typed_slices = false;
     NonplanarSurfaces                       m_nonplanar_surfaces;
+    std::shared_ptr<NonplanarDeferral>      m_nonplanar_plan;
+    // Surfaces left planar after a failed nonplanar slice; kept across the retries of one
+    // Print::process() and dropped by any outside invalidation, so a later slice tries them again.
+    std::vector<NonplanarFallback>          m_nonplanar_fallbacks;
 
     FillAdaptive::RegionOctrees             m_adaptive_fill_octrees;
     std::vector<BoundingBox>                m_separated_body_bboxes;
@@ -1091,6 +1104,11 @@ public:
     ApplyStatus         apply(const Model &model, DynamicPrintConfig config, bool extruder_applied = false) override;
 
     void                process(long long *time_cost_with_cache = nullptr, bool use_cache = false) override;
+private:
+    void                process_once(long long *time_cost_with_cache, bool use_cache);
+    // Prints the nonplanar surface where `error` happened planar and marks its object for a new slice.
+    bool                nonplanar_fallback(const SlicingError &error);
+public:
     // Exports G-code into a file name based on the path_template, returns the file path of the generated G-code file.
     // If preview_data is not null, the preview_data is filled in for the G-code visualization (not used by the command line Slic3r).
     std::string         export_gcode(const std::string& path_template, GCodeProcessorResult* result, ThumbnailsGeneratorCallback thumbnail_cb = nullptr);

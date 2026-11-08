@@ -8,6 +8,7 @@
 #include "Polygon.hpp"
 #include "Polyline.hpp"
 #include "Print.hpp"
+#include "NonplanarSchedule.hpp"
 #include "BeltTransform.hpp"
 
 #include "BoundingBox.hpp"
@@ -1963,6 +1964,10 @@ bool PrintObject::invalidate_state_by_config_options(
 bool PrintObject::invalidate_step(PrintObjectStep step)
 {
 	bool invalidated = Inherited::invalidate_step(step);
+    // Any object step changes the paths the nonplanar plan refers to.  The planar fallbacks
+    // belong to one slice: a changed object tries its surfaces nonplanar again.
+    m_nonplanar_plan.reset();
+    m_nonplanar_fallbacks.clear();
 
     // propagate to dependent steps
     if (step == posPerimeters) {
@@ -2011,6 +2016,8 @@ bool PrintObject::invalidate_all_steps()
 {
 	// First call the "invalidate" functions, which may cancel background processing.
     const bool inherited_invalidated = Inherited::invalidate_all_steps();
+    m_nonplanar_plan.reset();
+    m_nonplanar_fallbacks.clear();
     const bool print_invalidated     = m_print->invalidate_all_steps();
     bool result = inherited_invalidated || print_invalidated;
 	// Then reset some of the depending values.

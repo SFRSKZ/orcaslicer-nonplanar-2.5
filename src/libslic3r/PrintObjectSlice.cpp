@@ -1224,6 +1224,26 @@ PrintObject::find_nonplanar_surfaces()
                 }
             }
 
+            // surfaces that failed in an earlier attempt of this slice are printed planar
+            const std::string volume_name = (*it)->name;
+            for (NonplanarSurfaces::iterator it = volume_surfaces.begin(); it != volume_surfaces.end();) {
+                auto same = [&it](const NonplanarFallback &f) {
+                    const mesh_stats &a = f.stats, &b = it->stats;
+                    return std::abs(a.min.x - b.min.x) < 1e-4 && std::abs(a.min.y - b.min.y) < 1e-4 && std::abs(a.min.z - b.min.z) < 1e-4 &&
+                           std::abs(a.max.x - b.max.x) < 1e-4 && std::abs(a.max.y - b.max.y) < 1e-4 && std::abs(a.max.z - b.max.z) < 1e-4;
+                };
+                auto f = std::find_if(m_nonplanar_fallbacks.begin(), m_nonplanar_fallbacks.end(), same);
+                if (f != m_nonplanar_fallbacks.end()) {
+                    char msg[400];
+                    std::snprintf(msg, sizeof(msg), "Nonplanar surface of \"%s\" (height %.2f to %.2f mm) printed planar: %s at %.2f mm.",
+                        volume_name.c_str(), it->stats.min.z, it->stats.max.z, f->reason.c_str(), f->z);
+                    BOOST_LOG_TRIVIAL(warning) << msg;
+                    this->active_step_add_warning(PrintStateBase::WarningLevel::NON_CRITICAL, msg);
+                    it = volume_surfaces.erase(it);
+                } else
+                    ++ it;
+            }
+
             //nf.debug_output();
 
             BOOST_LOG_TRIVIAL(info) << "Find nonplanar surfaces - found " << volume_surfaces.size() << " in " << (*it)->name;
