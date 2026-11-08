@@ -232,6 +232,19 @@ void Layer::make_perimeters()
 	        done[region_id] = true;
 	        const PrintRegion &this_region = (*layerm)->region();
 
+	        // Nonplanar: a merged run below unions the slices of all regions and gives the
+	        // union the type and shell identity of its first surface.  The conformal shells
+	        // of this layer would then turn planar (their walls printed flat at the home
+	        // layer) or take another shell's target surface ("no facet of surface N" in the
+	        // projection).  A region carrying shells in this layer keeps its own run, like a
+	        // region with incompatible perimeter settings (e.g. a modifier that only changes
+	        // the infill of part of the object).
+	        const auto has_nonplanar_shells = [](const LayerRegion *l) {
+	            return std::any_of(l->slices.surfaces.begin(), l->slices.surfaces.end(),
+	                               [](const Surface &s) { return s.is_nonplanar(); });
+	        };
+	        const bool this_nonplanar = has_nonplanar_shells(*layerm);
+
 	        // find compatible regions
 	        LayerRegionPtrs layerms;
 	        layerms.push_back(*layerm);
@@ -244,6 +257,8 @@ void Layer::make_perimeters()
                     // gradient runs. Both tags are invalid unless per-part gradient is on, so
                     // this is a no-op for every other configuration.
                     if (this_region.gradient_volume_id() != other_region.gradient_volume_id())
+                        continue;
+                    if (this_nonplanar || has_nonplanar_shells(other_layerm))
                         continue;
                     if (is_perimeter_compatible(*m_object->print(), this_region, other_region))
                     {

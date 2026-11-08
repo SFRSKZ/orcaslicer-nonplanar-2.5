@@ -1870,8 +1870,7 @@ bool PrintObject::invalidate_state_by_config_options(
                opt_key == "use_nonplanar_layers"
             || opt_key == "nonplanar_layers_angle"
             || opt_key == "nonplanar_layers_height"
-            || opt_key == "nonplanar_edge_fix"
-            || opt_key == "nonplanar_region_enabled") {
+            || opt_key == "nonplanar_edge_fix") {
             steps.emplace_back(posSlice);
         } else if (
                 opt_key == "wall_generator"
@@ -2678,9 +2677,6 @@ PrintObject::detect_nonplanar_surfaces()
         m_print->throw_if_canceled();
         BOOST_LOG_TRIVIAL(trace) << "detect_nonplanar_surfaces for region " << region_id;
         const PrintRegion &region = this->printing_region(region_id);
-        // A modifier (or the object) can keep its region planar.
-        if (! region.config().nonplanar_region_enabled.value)
-            continue;
 
         //repeat detection for every nonplanar_surface
         int stable_surface_id = 0;
@@ -2854,7 +2850,12 @@ PrintObject::detect_nonplanar_surfaces()
                         // The pockets are hole outlines (clockwise): subtract them on their own, a
                         // clockwise pocket and a counter-clockwise projection over the same area
                         // cancel out in one clip set.
-                        ExPolygons band = diff_ex(offset_ex(union_ex(outer), float(scale_(reach))), pockets);
+                        // Round joins: every point of the band must stay within `reach` of the
+                        // surface, because the projection (LayerRegion::project_nonplanar_path) only
+                        // finds a facet that close.  The default miter join reaches up to three times
+                        // as far at a sharp corner of a small surface, and a shell piece taken there
+                        // fails with "no facet of surface N" (Stanford Bunny).
+                        ExPolygons band = diff_ex(offset_ex(union_ex(outer), float(scale_(reach)), jtRound, scale_(0.005)), pockets);
                         {
                             size_t si = 0;
                             for (const auto &other : this->nonplanar_surfaces()) {

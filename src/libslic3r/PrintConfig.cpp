@@ -5399,14 +5399,6 @@ void PrintConfigDef::init_fff_params()
     def->mode = comAdvanced;
     def->set_default_value(new ConfigOptionFloat(2.));
 
-    def = this->add("nonplanar_region_enabled", coBool);
-    def->label = L("Nonplanar in this region");
-    def->category = L("Quality");
-    def->tooltip = L("Off: the top shells of this region stay planar although nonplanar layers are enabled for the object. "
-                     "Add it to a modifier to keep nonplanar shells out of the modifier's volume, or turn it off for the "
-                     "object and on in a modifier to have nonplanar shells only there.");
-    def->mode = comAdvanced;
-    def->set_default_value(new ConfigOptionBool(true));
 
     def = this->add("set_nonplanar_top_surface_flow_ratio", coBool);
     def->label = L("Set nonplanar top surface flow ratio");
@@ -10242,6 +10234,8 @@ void PrintConfigDef::handle_legacy(t_config_option_key &opt_key, std::string &va
 
     // Ignore the following obsolete configuration keys:
     static std::set<std::string> ignore = {
+        // OrcaSlicer Nonplanar: per-region switch, removed (v15b)
+        "nonplanar_region_enabled",
         "acceleration", "scale", "rotate", "duplicate", "duplicate_grid",
         "bed_size",
         "print_center", "g0", "wipe_tower_per_color_wipe", 

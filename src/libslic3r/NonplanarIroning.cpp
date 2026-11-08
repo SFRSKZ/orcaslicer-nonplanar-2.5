@@ -152,14 +152,21 @@ void Layer::make_nonplanar_ironing()
     const double min_len   = 1.0;   // shorter pieces are dropped (mm)
 
     // Material of the layers above this one, of every region (nonplanar strips included: they
-    // lie in their home layers, above the material they cover).
-    Polygons covered_above;
-    for (const Layer *l = this->upper_layer; l != nullptr; l = l->upper_layer)
-        for (const LayerRegion *r : l->regions())
-            for (const Surface &s : r->slices.surfaces)
-                polygons_append(covered_above, to_polygons(s.expolygon));
-    if (! covered_above.empty())
-        covered_above = union_(covered_above);
+    // lie in their home layers, above the material they cover).  Only needed around a visible
+    // shell that is ironed, so it is built there and nowhere else: a union of every layer above
+    // for every layer grew with the square of the layer count (Stanford Bunny, ~590 layers:
+    // half an hour in this union alone).  Clipping to the shell's box keeps the result inside it.
+    auto covered_above_near = [this](const BoundingBox &bbox) {
+        Polygons covered;
+        for (const Layer *l = this->upper_layer; l != nullptr; l = l->upper_layer)
+            for (const LayerRegion *r : l->regions())
+                for (const Surface &s : r->slices.surfaces)
+                    if (get_extents(s.expolygon.contour).overlap(bbox))
+                        polygons_append(covered, ClipperUtils::clip_clipper_polygons_with_subject_bbox(s.expolygon, bbox));
+        if (! covered.empty())
+            covered = union_(covered);
+        return covered;
+    };
 
     for (LayerRegion *layerm : m_regions) {
         const NonplanarSurfaces &surfaces = layerm->nonplanar_surfaces();
@@ -172,6 +179,12 @@ void Layer::make_nonplanar_ironing()
                 top_by_surface[s.source_surface_id].push_back(s.expolygon);
         if (top_by_surface.empty())
             continue;
+        BoundingBox shell_bbox;
+        for (const auto &[surface_id, area] : top_by_surface)
+            for (const ExPolygon &e : area)
+                shell_bbox.merge(get_extents(e));
+        shell_bbox.offset(scale_(1.));
+        const Polygons covered_above = covered_above_near(shell_bbox);
 
         const PrintRegionConfig &region_config = layerm->region().config();
         const int    extruder   = region_config.top_surface_filament_id.value;

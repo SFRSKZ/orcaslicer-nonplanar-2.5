@@ -3092,7 +3092,6 @@ void TabPrint::build()
         optgroup->append_single_option_line("nonplanar_layers_angle");
         optgroup->append_single_option_line("nonplanar_layers_height");
         optgroup->append_single_option_line("nonplanar_edge_fix");
-        optgroup->append_single_option_line("nonplanar_region_enabled");
         optgroup->append_single_option_line("nonplanar_ironing");
         optgroup->append_single_option_line("nonplanar_ironing_flow");
         optgroup->append_single_option_line("nonplanar_ironing_spacing");
