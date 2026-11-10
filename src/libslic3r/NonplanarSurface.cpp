@@ -187,13 +187,19 @@ NonplanarSurface::group_surfaces()
 void
 NonplanarSurface::mark_neighbor_surfaces(int id)
 {
-    //if already marked return
-    if(this->mesh.find(id) == this->mesh.end() || this->mesh[id].marked == true) return;
-    //mark this facet
-    this->mesh[id].marked = true;
-    //mark all neighbors
-    for(int j = 0; j < 3; j++) {
-        this->mark_neighbor_surfaces(this->mesh[id].neighbor[j]);
+    // Flood fill with an explicit stack: the recursive version used one stack
+    // frame per facet and overflowed the stack on finely meshed surfaces
+    // (tens of thousands of facets), which crashed the slicer without a message.
+    std::vector<int> todo { id };
+    while (! todo.empty()) {
+        const int current = todo.back();
+        todo.pop_back();
+        auto it = this->mesh.find(current);
+        if (it == this->mesh.end() || it->second.marked)
+            continue;
+        it->second.marked = true;
+        for (int j = 0; j < 3; j++)
+            todo.push_back(it->second.neighbor[j]);
     }
 }
 
