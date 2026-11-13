@@ -2146,6 +2146,20 @@ StringObjectException Print::validate(std::vector<StringObjectException> *warnin
         }
     }
 
+    // Nonplanar layers: combinations the nonplanar G-code path does not support.
+    // Belt printers use tilted layers with their own Z handling, which conflicts with absolute nonplanar Z;
+    // mixed colour sub-layers would leave deferred nonplanar paths unwritten.
+    {
+        const bool any_nonplanar = std::any_of(m_objects.begin(), m_objects.end(),
+            [](const PrintObject *o) { return o->config().use_nonplanar_layers.value; });
+        if (any_nonplanar) {
+            if (m_config.belt_printer.value)
+                return { L("Nonplanar layers are not compatible with belt printer mode. Disable one of them.") };
+            if (m_config.enable_mixed_color_sublayer.value)
+                return { L("Nonplanar layers are not compatible with 'Mixed color sublayer'. Disable one of them.") };
+        }
+    }
+
     // Belt printer validation: incompatible features.
     if (m_config.belt_printer.value) {
         for (const PrintObject *object : m_objects) {

@@ -1,0 +1,8 @@
+{
+  "h12-iron":        {"np": true,  "npZ": 2812,  "deferred": 46},
+  "kc2-iron":        {"np": true,  "npZ": 2555,  "deferred": 32},
+  "kc2-planar":      {"np": false, "npZ": 0,     "deferred": 0},
+  "np-test-p1s":     {"np": true,  "npZ": 18524, "deferred": 4813},
+  "utu-kalibre-p1s": {"np": true,  "npZ": 32920, "deferred": 2772},
+  "yy-mod-off":      {"np": true,  "npZ": 22103, "deferred": 6186}
+}

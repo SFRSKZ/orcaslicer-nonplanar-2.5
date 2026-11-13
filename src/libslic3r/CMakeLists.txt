@@ -245,6 +245,7 @@ set(lisbslic3r_sources
     GCode/AdaptivePAInterpolator.cpp
     GCode/AdaptivePAInterpolator.hpp
     GCode/AdaptivePAProcessor.cpp
+    GCode/NonplanarEmission.hpp
     GCode/NonplanarFlow.cpp
     GCode/NonplanarFlow.hpp
     GCode/NonplanarPostfix.cpp
@@ -271,6 +272,7 @@ set(lisbslic3r_sources
     GCode/TimelapsePosPicker.cpp
     GCode/TimelapsePosPicker.hpp
     GCode.cpp
+    GCodeNonplanar.cpp
     GCode/ExtrusionProcessor.hpp
     GCode/FanMover.cpp
     GCode/FanMover.hpp
