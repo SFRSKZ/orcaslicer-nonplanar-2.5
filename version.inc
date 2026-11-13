@@ -9,7 +9,7 @@ set(BBL_INTERNAL_TESTING "0")
 endif()
 set(SoftFever_VERSION "2.5.0")
 # OrcaSlicer Nonplanar release (shown in About and in the G-code header).
-set(ORCA_NONPLANAR_VERSION "v15d")
+set(ORCA_NONPLANAR_VERSION "v15e")
 string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)"
        SoftFever_VERSION_MATCH ${SoftFever_VERSION})
 set(ORCA_VERSION_MAJOR ${CMAKE_MATCH_1})
