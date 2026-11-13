@@ -2,6 +2,7 @@
 #define slic3r_NonplanarSurface_hpp_
 
 #include "libslic3r.h"
+#include <memory>
 #include "NonplanarFacet.hpp"
 #include "Point.hpp"
 #include "Polygon.hpp"
@@ -63,6 +64,19 @@ class NonplanarSurface
     // (x, y) lies outside the surface but within max_dist (unscaled mm).
     bool height_near(double x, double y, double max_dist, double &z) const;
 
+private:
+    // Grid over the facets for height_near(), built on first use.  It belongs to one
+    // object and one mesh size; a copy or a changed mesh builds its own.
+    struct HeightIndex {
+        const NonplanarSurface              *owner { nullptr };
+        size_t                               facets { 0 };
+        double                               x0 { 0 }, y0 { 0 }, cell { 1. };
+        int                                  nx { 0 }, ny { 0 };
+        std::vector<const NonplanarFacet*>   order;   // map order
+        std::vector<std::vector<int>>        cells;   // indices into order, ascending
+    };
+    mutable std::shared_ptr<HeightIndex> m_height_index;
+    const HeightIndex& height_index() const;
 };
 
 // User-facing nonplanar errors share one format: what happened, where (height

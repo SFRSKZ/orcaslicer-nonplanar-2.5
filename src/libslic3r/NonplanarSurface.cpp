@@ -54,6 +54,7 @@ NonplanarSurface::calculate_stats()
 void
 NonplanarSurface::translate(float x, float y, float z)
 {
+    m_height_index.reset();
     //translate all facets
     for(auto& facet : this->mesh) {
         facet.second.translate(x, y, z);
@@ -81,6 +82,7 @@ NonplanarSurface::scale(float factor)
 void
 NonplanarSurface::scale(float versor[3])
 {
+    m_height_index.reset();
     //scale all facets
     for(auto& facet : this->mesh) {
         facet.second.scale(versor);
@@ -97,6 +99,7 @@ NonplanarSurface::scale(float versor[3])
 
 void
 NonplanarSurface::rotate_z(float angle) {
+  m_height_index.reset();
   double radian_angle = (angle / 180.0) * 3.1415927;
   double c = cos(radian_angle);
   double s = sin(radian_angle);
@@ -265,13 +268,67 @@ NonplanarSurface::horizontal_projection(Projection kind) const
     return union_ex(offset(pp, scale_(0.01)));
 }
 
+const NonplanarSurface::HeightIndex&
+NonplanarSurface::height_index() const
+{
+    if (m_height_index && m_height_index->owner == this && m_height_index->facets == this->mesh.size())
+        return *m_height_index;
+    auto idx = std::make_shared<HeightIndex>();
+    idx->owner  = this;
+    idx->facets = this->mesh.size();
+    double x0 = 1e30, y0 = 1e30, x1 = -1e30, y1 = -1e30;
+    for (const auto &entry : this->mesh) {
+        const NonplanarFacet &f = entry.second;
+        idx->order.push_back(&f);
+        x0 = std::min(x0, double(f.stats.min.x)); y0 = std::min(y0, double(f.stats.min.y));
+        x1 = std::max(x1, double(f.stats.max.x)); y1 = std::max(y1, double(f.stats.max.y));
+    }
+    if (! idx->order.empty()) {
+        // About 1 mm cells, at most 1024 per side.
+        idx->cell = std::max({ 1., (x1 - x0) / 1024., (y1 - y0) / 1024. });
+        idx->x0 = x0; idx->y0 = y0;
+        idx->nx = int((x1 - x0) / idx->cell) + 1;
+        idx->ny = int((y1 - y0) / idx->cell) + 1;
+        idx->cells.assign(size_t(idx->nx) * size_t(idx->ny), {});
+        for (int i = 0; i < int(idx->order.size()); ++ i) {
+            const NonplanarFacet &f = *idx->order[i];
+            const int ix0 = std::clamp(int((f.stats.min.x - x0) / idx->cell), 0, idx->nx - 1), ix1 = std::clamp(int((f.stats.max.x - x0) / idx->cell), 0, idx->nx - 1);
+            const int iy0 = std::clamp(int((f.stats.min.y - y0) / idx->cell), 0, idx->ny - 1), iy1 = std::clamp(int((f.stats.max.y - y0) / idx->cell), 0, idx->ny - 1);
+            for (int iy = iy0; iy <= iy1; ++ iy)
+                for (int ix = ix0; ix <= ix1; ++ ix)
+                    idx->cells[size_t(iy) * size_t(idx->nx) + size_t(ix)].push_back(i);
+        }
+    }
+    m_height_index = idx;
+    return *m_height_index;
+}
+
 bool
 NonplanarSurface::height_near(double x, double y, double max_dist, double &z) const
 {
     double best = max_dist * max_dist;
     bool   found = false;
-    for (const auto &entry : this->mesh) {
-        const NonplanarFacet &f = entry.second;
+    // Candidates are the facets whose box (plus max_dist) contains (x, y), visited in
+    // the order of the mesh map, so the result is the same as scanning all facets.
+    const HeightIndex &idx = this->height_index();
+    if (idx.order.empty())
+        return false;
+    std::vector<int> candidates;
+    {
+        const int ix0 = std::clamp(int(std::floor((x - max_dist - idx.x0) / idx.cell)), 0, idx.nx - 1);
+        const int ix1 = std::clamp(int(std::floor((x + max_dist - idx.x0) / idx.cell)), 0, idx.nx - 1);
+        const int iy0 = std::clamp(int(std::floor((y - max_dist - idx.y0) / idx.cell)), 0, idx.ny - 1);
+        const int iy1 = std::clamp(int(std::floor((y + max_dist - idx.y0) / idx.cell)), 0, idx.ny - 1);
+        for (int iy = iy0; iy <= iy1; ++ iy)
+            for (int ix = ix0; ix <= ix1; ++ ix) {
+                const std::vector<int> &c = idx.cells[size_t(iy) * size_t(idx.nx) + size_t(ix)];
+                candidates.insert(candidates.end(), c.begin(), c.end());
+            }
+        std::sort(candidates.begin(), candidates.end());
+        candidates.erase(std::unique(candidates.begin(), candidates.end()), candidates.end());
+    }
+    for (const int ci : candidates) {
+        const NonplanarFacet &f = *idx.order[ci];
         if (x < f.stats.min.x - max_dist || x > f.stats.max.x + max_dist ||
             y < f.stats.min.y - max_dist || y > f.stats.max.y + max_dist)
             continue;

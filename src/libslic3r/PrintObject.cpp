@@ -2999,13 +2999,24 @@ PrintObject::detect_nonplanar_surfaces()
                                 // The grid is the same for every source layer, so cells of neighbouring
                                 // layers line up and a cell rejected in one layer is covered by the other.
                                 auto grid_start = [cell](coord_t v) { return coord_t(std::floor(double(v) / double(cell))) * cell; };
-                                for (coord_t cx = grid_start(bb.min.x()); cx < bb.max.x(); cx += cell)
-                                    for (coord_t cy = grid_start(bb.min.y()); cy < bb.max.y(); cy += cell) {
-                                        Polygon square({ Point(cx, cy), Point(cx + cell, cy), Point(cx + cell, cy + cell), Point(cx, cy + cell) });
-                                        for (ExPolygon &sub : intersection_ex(ExPolygons{ piece }, Polygons{ square }))
-                                            if (sub.area() >= scale_(0.02) * scale_(0.02) && matches(sub, source, true))
-                                                taken.emplace_back(std::move(sub));
+                                // The piece is cut into columns first and each column into cells: clipping
+                                // every cell against the whole piece took tens of minutes on a large model
+                                // (a statue's outline ring spans hundreds of thousands of cells).
+                                for (coord_t cx = grid_start(bb.min.x()); cx < bb.max.x(); cx += cell) {
+                                    const coord_t y0 = grid_start(bb.min.y());
+                                    Polygon strip({ Point(cx, y0), Point(cx + cell, y0), Point(cx + cell, bb.max.y() + cell), Point(cx, bb.max.y() + cell) });
+                                    // Each column piece is cut on its own: a ring's column has two short
+                                    // pieces far apart, and the cells between them are empty.
+                                    for (const ExPolygon &column : intersection_ex(ExPolygons{ piece }, Polygons{ strip })) {
+                                        const BoundingBox cbb = get_extents(column);
+                                        for (coord_t cy = grid_start(cbb.min.y()); cy < cbb.max.y(); cy += cell) {
+                                            Polygon square({ Point(cx, cy), Point(cx + cell, cy), Point(cx + cell, cy + cell), Point(cx, cy + cell) });
+                                            for (ExPolygon &sub : intersection_ex(ExPolygons{ column }, Polygons{ square }))
+                                                if (sub.area() >= scale_(0.02) * scale_(0.02) && matches(sub, source, true))
+                                                    taken.emplace_back(std::move(sub));
+                                        }
                                     }
+                                }
                             }
                             if (std::getenv("NONPLANAR_EDGE_DEBUG") != nullptr) {
                                 double area_ext = 0, area_taken = 0;
