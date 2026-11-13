@@ -157,31 +157,32 @@ NonplanarSurface::debug_output()
 NonplanarSurfaces
 NonplanarSurface::group_surfaces()
 {
-    std::pair<int, NonplanarFacet> begin = *this->mesh.begin();
-    this->mark_neighbor_surfaces(begin.first);
-    NonplanarSurface newSurface;
-    for (std::map<int, NonplanarFacet>::iterator it=this->mesh.begin(); it!=this->mesh.end();) {
-        if((*it).second.marked == false) {
-            newSurface.mesh[(*it).first] = (*it).second;
-            it = this->mesh.erase(it);
+    // Splits off one connected group per round.  This used to recurse once per
+    // group and overflowed the stack on meshes with thousands of small groups;
+    // the result keeps the order of the recursive version (last group first,
+    // this one last).
+    NonplanarSurfaces nonplanar_surfaces;
+    NonplanarSurface  rest;
+    NonplanarSurface *current = this;
+    while (! current->mesh.empty()) {
+        current->mark_neighbor_surfaces(current->mesh.begin()->first);
+        NonplanarSurface newSurface;
+        for (std::map<int, NonplanarFacet>::iterator it = current->mesh.begin(); it != current->mesh.end();) {
+            if ((*it).second.marked == false) {
+                newSurface.mesh[(*it).first] = (*it).second;
+                it = current->mesh.erase(it);
+            } else
+                ++it;
         }
-        else {
-            ++it;
-        }
+        current->calculate_stats();
+        nonplanar_surfaces.push_back(*current);
+        if (newSurface.mesh.empty())
+            break;
+        rest    = std::move(newSurface);
+        current = &rest;
     }
-    this->calculate_stats();
-    if (newSurface.mesh.size() == 0) {
-        //return only this
-        NonplanarSurfaces nonplanar_surfaces;
-        nonplanar_surfaces.push_back(*this);
-        return nonplanar_surfaces;
-    } 
-    else {
-        //return union of this and recursion
-        NonplanarSurfaces nonplanar_surfaces = newSurface.group_surfaces();
-        nonplanar_surfaces.push_back(*this);
-        return nonplanar_surfaces;
-    }
+    std::reverse(nonplanar_surfaces.begin(), nonplanar_surfaces.end());
+    return nonplanar_surfaces;
 }
 
 void

@@ -3308,8 +3308,34 @@ bool Print::nonplanar_fallback(const SlicingError &error)
     for (PrintObject *o : m_objects)
         if (o->id().id == error.objectId())
             object = o;
+    if (object == nullptr || ! object->config().use_nonplanar_layers.value)
+        return false;
+    // Resets the object's steps from the worker thread, keeping the planar decisions.
+    auto slice_again = [this, object]() {
+        std::vector<PrintObject::NonplanarFallback> fallbacks = object->m_nonplanar_fallbacks;
+        std::string off_reason = object->m_nonplanar_off_reason;
+        {
+            // The cancel callback would stop the worker itself, so it is switched off
+            // while the steps are reset.
+            std::scoped_lock<std::mutex> lock(this->state_mutex());
+            const auto cancel = this->cancel_callback();
+            this->set_cancel_callback([]() {});
+            object->invalidate_step(posSlice);
+            this->set_cancel_callback(cancel);
+        }
+        object->m_nonplanar_fallbacks  = std::move(fallbacks);
+        object->m_nonplanar_off_reason = std::move(off_reason);
+    };
+    // The plan ran out of time: every surface of the object is printed planar.
+    if (std::string(error.what()).find(nonplanar_plan_timeout_marker()) != std::string::npos) {
+        if (! object->m_nonplanar_off_reason.empty())
+            return false;
+        object->m_nonplanar_off_reason = nonplanar_plan_timeout_marker();
+        slice_again();
+        return true;
+    }
     double z = 0.;
-    if (object == nullptr || ! object->config().use_nonplanar_layers.value || ! nonplanar_error_height(error.what(), z))
+    if (! nonplanar_error_height(error.what(), z))
         return false;
     // Surfaces are in the object frame, the error height is a print height.
     const double zo = z - object->slicing_parameters().object_print_z_min;
@@ -3343,18 +3369,8 @@ bool Print::nonplanar_fallback(const SlicingError &error)
     fallback.reason = what.find("collision") != std::string::npos ? "no print order avoids a hotend collision there" :
                       what.find("climb more than 12") != std::string::npos ? "a nonplanar line would have to climb more than 12° there" :
                                                                     "an internal check failed there";
-    std::vector<PrintObject::NonplanarFallback> fallbacks = object->m_nonplanar_fallbacks;
-    fallbacks.push_back(fallback);
-    {
-        // The worker thread invalidates its own object: the cancel callback would stop the
-        // worker itself, so it is switched off while the steps are reset.
-        std::scoped_lock<std::mutex> lock(this->state_mutex());
-        const auto cancel = this->cancel_callback();
-        this->set_cancel_callback([]() {});
-        object->invalidate_step(posSlice);
-        this->set_cancel_callback(cancel);
-    }
-    object->m_nonplanar_fallbacks = std::move(fallbacks);
+    object->m_nonplanar_fallbacks.push_back(fallback);
+    slice_again();
     return true;
 }
 

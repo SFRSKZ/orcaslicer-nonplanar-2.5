@@ -1088,6 +1088,15 @@ PrintObject::find_nonplanar_surfaces()
     // overwrite the list of the previous one.
     m_nonplanar_surfaces.clear();
 
+    // The print order plan ran out of time: the whole object is printed planar.
+    if (! m_nonplanar_off_reason.empty()) {
+        const std::string msg = "Nonplanar layers of \"" + this->model_object()->name + "\" printed planar: " + m_nonplanar_off_reason +
+                                " (limit set by NONPLANAR_PLAN_BUDGET, in seconds; 0 = no limit).";
+        BOOST_LOG_TRIVIAL(warning) << msg;
+        this->active_step_add_warning(PrintStateBase::WarningLevel::NON_CRITICAL, msg);
+        return;
+    }
+
     //Itterate over all model volumes
     const ModelVolumePtrs volumes = this->model_object()->volumes;
     for (ModelVolumePtrs::const_iterator it = volumes.begin(); it != volumes.end(); ++ it) {

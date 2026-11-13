@@ -14,6 +14,7 @@
 #include <oneapi/tbb/parallel_for.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -173,9 +174,25 @@ NonplanarDeferral plan_nonplanar_deferral(const PrintObject &object, const Nonpl
     // The plan can take minutes: honour a cancel from the GUI (otherwise the
     // GUI waits for the whole plan after its stop button was pressed).
     const PrintBase *print = object.print();
-    auto throw_if_canceled = [print]() {
+    // Time budget: on large detailed models the cycle refinement below can run
+    // for hours (a 300-layer statue took over 7 hours without finishing).  Past
+    // the budget the plan stops with an error that Print::process() answers by
+    // printing the whole object planar.  NONPLANAR_PLAN_BUDGET overrides the
+    // budget in seconds (0 = unlimited).
+    static const double budget_s = []() {
+        const char *v = std::getenv("NONPLANAR_PLAN_BUDGET");
+        return v != nullptr ? std::atof(v) : 300.;
+    }();
+    const auto plan_start = std::chrono::steady_clock::now();
+    const size_t object_id = object.id().id;
+    auto throw_if_canceled = [print, plan_start, object_id]() {
         if (print != nullptr && print->canceled())
             throw CanceledException();
+        if (budget_s > 0. && std::chrono::duration<double>(std::chrono::steady_clock::now() - plan_start).count() > budget_s) {
+            char msg[200];
+            std::snprintf(msg, sizeof(msg), "Nonplanar slicing stopped: %s (over %.0f s).", nonplanar_plan_timeout_marker(), budget_s);
+            throw Slic3r::SlicingError(msg, object_id);
+        }
     };
     const auto layers = object.layers();
     size_t layer_slots = 0;

@@ -121,7 +121,12 @@ struct NonplanarClearanceModel
     double sample_step   { 0.1 };
 };
 
-// Throws Slic3r::SlicingError if no admissible order exists.
+// Text of the error thrown when the plan runs past its time budget; Print::process()
+// looks for it to print the whole object planar.
+inline const char* nonplanar_plan_timeout_marker() { return "planning the print order took too long"; }
+
+// Throws Slic3r::SlicingError if no admissible order exists or the time budget
+// (NONPLANAR_PLAN_BUDGET seconds, default 300) runs out.
 NonplanarDeferral plan_nonplanar_deferral(const PrintObject &object, const NonplanarClearanceModel &model);
 
 // Heights of the material deposited so far, in G-code XY coordinates, for

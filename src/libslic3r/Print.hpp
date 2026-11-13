@@ -726,6 +726,8 @@ private:
     // Surfaces left planar after a failed nonplanar slice; kept across the retries of one
     // Print::process() and dropped by any outside invalidation, so a later slice tries them again.
     std::vector<NonplanarFallback>          m_nonplanar_fallbacks;
+    // Set when the whole object is printed planar (the plan ran out of time), same lifetime.
+    std::string                             m_nonplanar_off_reason;
 
     FillAdaptive::RegionOctrees             m_adaptive_fill_octrees;
     std::vector<BoundingBox>                m_separated_body_bboxes;

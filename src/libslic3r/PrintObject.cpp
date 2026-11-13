@@ -1968,6 +1968,7 @@ bool PrintObject::invalidate_step(PrintObjectStep step)
     // belong to one slice: a changed object tries its surfaces nonplanar again.
     m_nonplanar_plan.reset();
     m_nonplanar_fallbacks.clear();
+    m_nonplanar_off_reason.clear();
 
     // propagate to dependent steps
     if (step == posPerimeters) {
@@ -2018,6 +2019,7 @@ bool PrintObject::invalidate_all_steps()
     const bool inherited_invalidated = Inherited::invalidate_all_steps();
     m_nonplanar_plan.reset();
     m_nonplanar_fallbacks.clear();
+    m_nonplanar_off_reason.clear();
     const bool print_invalidated     = m_print->invalidate_all_steps();
     bool result = inherited_invalidated || print_invalidated;
 	// Then reset some of the depending values.
