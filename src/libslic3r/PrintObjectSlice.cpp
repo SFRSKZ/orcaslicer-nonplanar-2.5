@@ -1183,6 +1183,46 @@ PrintObject::find_nonplanar_surfaces()
                 }
             }
 
+            // surfaces that failed in an earlier attempt with a reduced angle: only their facets up to
+            // that slope stay nonplanar, regrouped into smaller surfaces (the steeper facets are planar)
+            {
+                const std::string vname = (*it)->name;
+                NonplanarSurfaces rebuilt;
+                for (NonplanarSurface &surf : volume_surfaces) {
+                    auto f = std::find_if(m_nonplanar_fallbacks.begin(), m_nonplanar_fallbacks.end(), [&surf](const NonplanarFallback &fb) {
+                        const mesh_stats &a = fb.stats, &b = surf.stats;
+                        return fb.angle > 0. &&
+                               std::abs(a.min.x - b.min.x) < 1e-4 && std::abs(a.min.y - b.min.y) < 1e-4 && std::abs(a.min.z - b.min.z) < 1e-4 &&
+                               std::abs(a.max.x - b.max.x) < 1e-4 && std::abs(a.max.y - b.max.y) < 1e-4 && std::abs(a.max.z - b.max.z) < 1e-4;
+                    });
+                    if (f == m_nonplanar_fallbacks.end()) {
+                        rebuilt.push_back(std::move(surf));
+                        continue;
+                    }
+                    const double cos_limit = std::cos(f->angle * 3.14159265/180.0);
+                    std::map<int, NonplanarFacet> kept;
+                    for (const auto &entry : surf.mesh)
+                        if (! entry.second.rim && entry.second.normal.z >= cos_limit)
+                            kept[entry.first] = entry.second;
+                    size_t pieces = 0;
+                    if (! kept.empty()) {
+                        NonplanarSurface sub(kept);
+                        for (NonplanarSurface &piece : sub.group_surfaces()) {
+                            piece.has_origin   = true;
+                            piece.origin_stats = surf.stats;
+                            rebuilt.push_back(std::move(piece));
+                            ++ pieces;
+                        }
+                    }
+                    char msg[400];
+                    std::snprintf(msg, sizeof(msg), "Nonplanar surface of \"%s\" (height %.2f to %.2f mm): %s at %.2f mm, printed with max angle %g° instead of %g°; steeper parts printed planar.",
+                        vname.c_str(), surf.stats.min.z, surf.stats.max.z, f->reason.c_str(), f->z, f->angle, f->original_angle);
+                    BOOST_LOG_TRIVIAL(warning) << msg;
+                    this->active_step_add_warning(PrintStateBase::WarningLevel::NON_CRITICAL, msg);
+                }
+                volume_surfaces = std::move(rebuilt);
+            }
+
 #ifdef SLIC3R_DEBUG_SLICE_PROCESSING
             for (size_t id = 0; id < volume_surfaces.size(); ++ id) {
                 auto& surface = volume_surfaces[id];
@@ -1237,8 +1277,8 @@ PrintObject::find_nonplanar_surfaces()
             const std::string volume_name = (*it)->name;
             for (NonplanarSurfaces::iterator it = volume_surfaces.begin(); it != volume_surfaces.end();) {
                 auto same = [&it](const NonplanarFallback &f) {
-                    const mesh_stats &a = f.stats, &b = it->stats;
-                    return std::abs(a.min.x - b.min.x) < 1e-4 && std::abs(a.min.y - b.min.y) < 1e-4 && std::abs(a.min.z - b.min.z) < 1e-4 &&
+                    const mesh_stats &a = f.stats, &b = it->has_origin ? it->origin_stats : it->stats;
+                    return f.angle <= 0. && std::abs(a.min.x - b.min.x) < 1e-4 && std::abs(a.min.y - b.min.y) < 1e-4 && std::abs(a.min.z - b.min.z) < 1e-4 &&
                            std::abs(a.max.x - b.max.x) < 1e-4 && std::abs(a.max.y - b.max.y) < 1e-4 && std::abs(a.max.z - b.max.z) < 1e-4;
                 };
                 auto f = std::find_if(m_nonplanar_fallbacks.begin(), m_nonplanar_fallbacks.end(), same);

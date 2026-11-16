@@ -3292,7 +3292,7 @@ void Print::process(long long *time_cost_with_cache, bool use_cache)
             this->process_once(time_cost_with_cache, use_cache);
             return;
         } catch (const Slic3r::SlicingError &error) {
-            const bool retry = ! use_cache && attempt < 8 && this->nonplanar_fallback(error);
+            const bool retry = ! use_cache && attempt < 16 && this->nonplanar_fallback(error);
             if (std::getenv("NONPLANAR_FALLBACK_TRACE") != nullptr)
                 std::fprintf(stderr, "nonplanar fallback attempt %d: %s -> %s\n", attempt, error.what(), retry ? "retry" : "give up");
             if (! retry)
@@ -3339,11 +3339,16 @@ bool Print::nonplanar_fallback(const SlicingError &error)
         return false;
     // Surfaces are in the object frame, the error height is a print height.
     const double zo = z - object->slicing_parameters().object_print_z_min;
-    auto excluded = [object](const NonplanarSurface &s) {
+    auto same_stats = [](const mesh_stats &a, const mesh_stats &b) {
+        return std::abs(a.min.x - b.min.x) < 1e-4 && std::abs(a.min.y - b.min.y) < 1e-4 &&
+               std::abs(a.min.z - b.min.z) < 1e-4 && std::abs(a.max.x - b.max.x) < 1e-4 &&
+               std::abs(a.max.y - b.max.y) < 1e-4 && std::abs(a.max.z - b.max.z) < 1e-4;
+    };
+    // Pieces of a surface rebuilt with a lower angle are keyed to the surface they came from.
+    auto key_of = [](const NonplanarSurface &s) -> const mesh_stats & { return s.has_origin ? s.origin_stats : s.stats; };
+    auto excluded = [object, &same_stats, &key_of](const NonplanarSurface &s) {
         for (const PrintObject::NonplanarFallback &f : object->m_nonplanar_fallbacks)
-            if (std::abs(f.stats.min.x - s.stats.min.x) < 1e-4 && std::abs(f.stats.min.y - s.stats.min.y) < 1e-4 &&
-                std::abs(f.stats.min.z - s.stats.min.z) < 1e-4 && std::abs(f.stats.max.x - s.stats.max.x) < 1e-4 &&
-                std::abs(f.stats.max.y - s.stats.max.y) < 1e-4 && std::abs(f.stats.max.z - s.stats.max.z) < 1e-4)
+            if (f.angle <= 0. && same_stats(f.stats, key_of(s)))
                 return true;
         return false;
     };
@@ -3364,11 +3369,27 @@ bool Print::nonplanar_fallback(const SlicingError &error)
         return false;
     const std::string what = error.what();
     PrintObject::NonplanarFallback fallback;
-    fallback.stats  = best->stats;
+    fallback.stats  = key_of(*best);
     fallback.z      = z;
     fallback.reason = what.find("collision") != std::string::npos ? "no print order avoids a hotend collision there" :
                       what.find("climb more than 12") != std::string::npos ? "a nonplanar line would have to climb more than 12° there" :
                                                                     "an internal check failed there";
+    // Next step down: configured angle -> 10 -> 8 -> 6 -> 4, then the surface is printed planar.
+    const double configured = object->config().nonplanar_layers_angle.value;
+    fallback.original_angle = configured;
+    auto entry = std::find_if(object->m_nonplanar_fallbacks.begin(), object->m_nonplanar_fallbacks.end(),
+        [&](const PrintObject::NonplanarFallback &f) { return same_stats(f.stats, fallback.stats); });
+    const double current = entry != object->m_nonplanar_fallbacks.end() ? entry->angle : configured;
+    const double next    = nonplanar_suggested_angle(current);
+    fallback.angle = next >= 4. - EPSILON && next < current - EPSILON ? next : 0.;
+    if (std::getenv("NONPLANAR_FALLBACK_TRACE") != nullptr)
+        std::fprintf(stderr, "nonplanar fallback surface z %.2f..%.2f bbox %.1f,%.1f..%.1f,%.1f: angle %g -> %g%s\n", fallback.stats.min.z, fallback.stats.max.z,
+            fallback.stats.min.x, fallback.stats.min.y, fallback.stats.max.x, fallback.stats.max.y, current, fallback.angle, fallback.angle > 0. ? "" : " (planar)");
+    if (entry != object->m_nonplanar_fallbacks.end()) {
+        *entry = fallback;
+        slice_again();
+        return true;
+    }
     object->m_nonplanar_fallbacks.push_back(fallback);
     slice_again();
     return true;
@@ -4144,7 +4165,7 @@ std::string Print::export_gcode(const std::string& path_template, GCodeProcessor
             gcode->do_export(this, path.c_str(), result, thumbnail_cb);
             break;
         } catch (const Slic3r::SlicingError &error) {
-            const bool retry = attempt < 8 && this->nonplanar_fallback(error);
+            const bool retry = attempt < 16 && this->nonplanar_fallback(error);
             if (std::getenv("NONPLANAR_FALLBACK_TRACE") != nullptr)
                 std::fprintf(stderr, "nonplanar fallback (G-code) attempt %d: %s -> %s\n", attempt, error.what(), retry ? "retry" : "give up");
             if (! retry)

@@ -387,6 +387,9 @@ public:
         mesh_stats  stats;
         double      z { 0. };   // print height where slicing failed
         std::string reason;
+        // 0: the surface is printed planar.  > 0: only its facets up to this slope stay nonplanar.
+        double      angle { 0. };
+        double      original_angle { 0. };
     };
     Transform3d                  trafo_centered() const
         { Transform3d t = this->trafo(); t.pretranslate(Vec3d(- unscale<double>(m_center_offset.x()), - unscale<double>(m_center_offset.y()), 0)); return t; }

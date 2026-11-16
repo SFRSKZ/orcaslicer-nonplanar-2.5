@@ -43,6 +43,9 @@ class NonplanarSurface
     // Facets kept only as projection targets (slope above the nonplanar angle).
     std::map<int, NonplanarFacet> rim;
     mesh_stats stats;
+    // A piece of a surface rebuilt with a lower angle keeps the extents of the surface it came from.
+    bool       has_origin = false;
+    mesh_stats origin_stats {};
     int stable_id = -1;
     NonplanarSurface() {};
     ~NonplanarSurface() {};
