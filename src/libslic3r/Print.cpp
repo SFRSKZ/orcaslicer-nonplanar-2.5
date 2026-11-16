@@ -3287,11 +3287,19 @@ std::map<ObjectID, unsigned int> getObjectExtruderMap(const Print& print) {
 // object is sliced again and a warning names the height.  Other errors are passed on.
 void Print::process(long long *time_cost_with_cache, bool use_cache)
 {
+    const auto retry_start = std::chrono::steady_clock::now();
+    static const double ladder_budget_s = []() {
+        const char *v = std::getenv("NONPLANAR_PLAN_BUDGET");
+        return v != nullptr ? std::atof(v) : 300.;
+    }();
+    m_nonplanar_angle_ladder = true;
     for (int attempt = 1;; ++ attempt) {
         try {
             this->process_once(time_cost_with_cache, use_cache);
             return;
         } catch (const Slic3r::SlicingError &error) {
+            m_nonplanar_angle_ladder = ladder_budget_s <= 0. ||
+                std::chrono::duration<double>(std::chrono::steady_clock::now() - retry_start).count() < 0.5 * ladder_budget_s;
             const bool retry = ! use_cache && attempt < 16 && this->nonplanar_fallback(error);
             if (std::getenv("NONPLANAR_FALLBACK_TRACE") != nullptr)
                 std::fprintf(stderr, "nonplanar fallback attempt %d: %s -> %s\n", attempt, error.what(), retry ? "retry" : "give up");
@@ -3381,7 +3389,7 @@ bool Print::nonplanar_fallback(const SlicingError &error)
         [&](const PrintObject::NonplanarFallback &f) { return same_stats(f.stats, fallback.stats); });
     const double current = entry != object->m_nonplanar_fallbacks.end() ? entry->angle : configured;
     const double next    = nonplanar_suggested_angle(current);
-    fallback.angle = next >= 4. - EPSILON && next < current - EPSILON ? next : 0.;
+    fallback.angle = m_nonplanar_angle_ladder && next >= 4. - EPSILON && next < current - EPSILON ? next : 0.;
     if (std::getenv("NONPLANAR_FALLBACK_TRACE") != nullptr)
         std::fprintf(stderr, "nonplanar fallback surface z %.2f..%.2f bbox %.1f,%.1f..%.1f,%.1f: angle %g -> %g%s\n", fallback.stats.min.z, fallback.stats.max.z,
             fallback.stats.min.x, fallback.stats.min.y, fallback.stats.max.x, fallback.stats.max.y, current, fallback.angle, fallback.angle > 0. ? "" : " (planar)");

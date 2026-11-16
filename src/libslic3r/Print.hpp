@@ -1113,6 +1113,9 @@ private:
     void                process_once(long long *time_cost_with_cache, bool use_cache);
     // Prints the nonplanar surface where `error` happened planar and marks its object for a new slice.
     bool                nonplanar_fallback(const SlicingError &error);
+    // False once the retries of process() used up the nonplanar time budget: failing surfaces are then
+    // printed planar at once instead of being tried with lower angles.
+    bool                m_nonplanar_angle_ladder { true };
 public:
     // Exports G-code into a file name based on the path_template, returns the file path of the generated G-code file.
     // If preview_data is not null, the preview_data is filled in for the G-code visualization (not used by the command line Slic3r).

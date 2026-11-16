@@ -245,15 +245,32 @@ NonplanarDeferral plan_nonplanar_deferral(const PrintObject &object, const Nonpl
         box_reach = std::max({ box_reach, std::abs(b.x_min), std::abs(b.x_max), std::abs(b.y_min), std::abs(b.y_max) });
     }
     const double threshold = min_bottom - model.safety_mm;
+    std::vector<double> ring_threshold, ring_radius_max;
+    {
+        std::vector<std::pair<double, double>> by_bottom;
+        for (const NonplanarClearanceModel::Ring &r : m_model.ring_list)
+            by_bottom.emplace_back(r.bottom - m_model.safety_mm, r.radius);
+        std::stable_sort(by_bottom.begin(), by_bottom.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
+        double widest = std::numeric_limits<double>::lowest();
+        for (const auto &e : by_bottom) {
+            widest = std::max(widest, e.second);
+            ring_threshold.push_back(e.first);
+            ring_radius_max.push_back(widest);
+        }
+    }
     // tolerant: without sampling slack and safety margin (cycle resolution).
-    auto blocks = [&m_model](const Sample &m, const Sample &t, bool tolerant = false) {
+    auto blocks = [&m_model, &ring_threshold, &ring_radius_max](const Sample &m, const Sample &t, bool tolerant = false) {
         // Tolerant drops the safety margin: dz > bottom instead of bottom - safety.
         const double dz = m.z - t.z - (tolerant ? m_model.safety_mm : 0.);
         const double grow = m.half_width + m_model.bead_margin + (tolerant ? 0. : m_model.safety_mm + m_model.sample_step);
         const double d = std::hypot(m.x - t.x, m.y - t.y);
-        for (const NonplanarClearanceModel::Ring &r : m_model.ring_list)
-            if (dz > r.bottom - m_model.safety_mm && d < r.radius + grow)
+        // Some ring has dz > bottom - safety and d < radius + grow  <=>  d < (widest ring that
+        // dz reaches) + grow; thresholds ascending, radii as prefix maxima.
+        {
+            const size_t reached = size_t(std::lower_bound(ring_threshold.begin(), ring_threshold.end(), dz) - ring_threshold.begin());
+            if (reached > 0 && d < ring_radius_max[reached - 1] + grow)
                 return true;
+        }
         const double rx = m.x - t.x, ry = m.y - t.y;
         for (const NonplanarClearanceModel::Box &b : m_model.boxes)
             if (dz > b.bottom - m_model.safety_mm &&
@@ -699,7 +716,10 @@ NonplanarDeferral plan_nonplanar_deferral(const PrintObject &object, const Nonpl
         auto collect_dependents = [&](int u, bool only_changed, std::vector<int> &out, std::vector<int> &mark) {
             // A unit found once is not tested again for further samples
             // (mark holds the collecting unit, one buffer per collection).
+            size_t sample_count = 0;
             for (int t : members[size_t(u)]) {
+                if ((++ sample_count & 63) == 0)
+                    throw_if_canceled();
                 visit_followers(t,
                     [&](int m) { const int v = unit_of[size_t(m)]; return v != u && mark[size_t(v)] != u && (! only_changed || changed[size_t(v)]); },
                     [&](int m) { const int v = unit_of[size_t(m)]; if (mark[size_t(v)] != u) { mark[size_t(v)] = u; out.push_back(v); } },

@@ -1489,6 +1489,9 @@ std::vector<ExtrusionPath> LayerRegion::project_nonplanar_path(const ExtrusionPa
         slope_deg = std::acos(std::max(-1.0, std::min(1.0, double(facet->normal.z)))) * 180.0 / M_PI;
         return true;
     };
+    // Candidates of the path's own target surface, prepared once per segment.
+    struct OwnCandidate { size_t si; int facet_id; const NonplanarFacet *facet; bool rim; double x0, x1, y0, y1; };
+    std::vector<OwnCandidate> own_candidates;
     auto sample = [&](double x, double y, int &owner, int &facet_id, double &height, bool &is_rim, double &slope_deg) {
         // Shallow target facets win: a point of a normal conformal line must not be
         // borrowed by a steeper rim facet that merely happens to be nearer in XY.  Rim
@@ -1500,15 +1503,17 @@ std::vector<ExtrusionPath> LayerRegion::project_nonplanar_path(const ExtrusionPa
         double height_fill = 0.0, height_rim = 0.0;
         bool   rim_fill = false, rim_rim = false;
         double slope_fill = 0.0, slope_rim = 0.0;
-        for (const auto &[si, candidate_facet_id] : *candidates) {
-            if (m_nonplanar_surfaces[si].stable_id != source.source_surface_id)
+        for (const OwnCandidate &oc : own_candidates) {
+            // Outside the facet's XY box by more than the margin: no point of the
+            // facet is within reach (same answer as nonplanar_triangle_height()).
+            if (x < oc.x0 - margin || x > oc.x1 + margin || y < oc.y0 - margin || y > oc.y1 + margin)
                 continue;
-            const NonplanarFacet *facet = facet_of(si, candidate_facet_id);
-            if (facet == nullptr)
-                continue;
+            const size_t si = oc.si;
+            const int candidate_facet_id = oc.facet_id;
+            const NonplanarFacet *facet = oc.facet;
             double z = 0.0, d2 = 0.0;
             if (!nonplanar_triangle_height(*facet, x, y, margin, z, d2)) continue;
-            const bool rim = m_nonplanar_surfaces[si].mesh.find(candidate_facet_id) == m_nonplanar_surfaces[si].mesh.end();
+            const bool rim = oc.rim;
             if (rim) {
                 if (d2 < best_rim) { best_rim = d2; owner_rim = int(si); facet_rim = candidate_facet_id; height_rim = z - offset; rim_rim = true;
                                      slope_rim = std::acos(std::max(-1.0, std::min(1.0, double(facet->normal.z)))) * 180.0 / M_PI; }
@@ -1582,6 +1587,19 @@ std::vector<ExtrusionPath> LayerRegion::project_nonplanar_path(const ExtrusionPa
         const auto nearby = index.query(std::min(ax, ax + dx) - margin, std::min(ay, ay + dy) - margin,
                                         std::max(ax, ax + dx) + margin, std::max(ay, ay + dy) + margin);
         candidates = &nearby;
+        own_candidates.clear();
+        for (const auto &[si, candidate_facet_id] : nearby) {
+            if (m_nonplanar_surfaces[si].stable_id != source.source_surface_id)
+                continue;
+            const NonplanarFacet *facet = facet_of(si, candidate_facet_id);
+            if (facet == nullptr)
+                continue;
+            const auto &v = facet->vertex;
+            own_candidates.push_back({ si, candidate_facet_id, facet,
+                m_nonplanar_surfaces[si].mesh.find(candidate_facet_id) == m_nonplanar_surfaces[si].mesh.end(),
+                double(std::min({v[0].x, v[1].x, v[2].x})) - 1e-4, double(std::max({v[0].x, v[1].x, v[2].x})) + 1e-4,
+                double(std::min({v[0].y, v[1].y, v[2].y})) - 1e-4, double(std::max({v[0].y, v[1].y, v[2].y})) + 1e-4 });
+        }
         std::vector<double> ts{0.0, 1.0};
         for (const auto &[si, facet_id] : nearby) {
                 const NonplanarFacet *facet_ptr = facet_of(si, facet_id);
