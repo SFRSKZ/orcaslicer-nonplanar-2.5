@@ -1204,6 +1204,36 @@ PrintObject::find_nonplanar_surfaces()
                     for (const auto &entry : surf.mesh)
                         if (! entry.second.rim && entry.second.normal.z >= cos_limit)
                             kept[entry.first] = entry.second;
+                    // On a noisy mesh the slope test alone leaves a ragged set: single facets poke out
+                    // of the edge and leave notches in it, which become short paths and retractions.
+                    // Smooth the set on the facet graph: fill notches (facets of the original surface
+                    // with two or more kept neighbours), then trim spurs (kept facets with at most one
+                    // kept neighbour).  A filled facet is at most as steep as the configured angle; if it
+                    // collides again, the next attempt lowers the angle once more.
+                    auto kept_neighbours = [&kept](const NonplanarFacet &facet) {
+                        int n = 0;
+                        for (int j = 0; j < 3; ++ j)
+                            n += kept.count(facet.neighbor[j]) ? 1 : 0;
+                        return n;
+                    };
+                    for (int round = 0; round < 2; ++ round) {
+                        std::vector<int> add;
+                        for (const auto &entry : surf.mesh)
+                            if (! entry.second.rim && ! kept.count(entry.first) && kept_neighbours(entry.second) >= 2)
+                                add.push_back(entry.first);
+                        for (int id : add)
+                            kept[id] = surf.mesh.at(id);
+                    }
+                    for (int round = 0; round < 4; ++ round) {
+                        std::vector<int> drop;
+                        for (const auto &entry : kept)
+                            if (kept_neighbours(entry.second) <= 1)
+                                drop.push_back(entry.first);
+                        if (drop.empty())
+                            break;
+                        for (int id : drop)
+                            kept.erase(id);
+                    }
                     size_t pieces = 0;
                     if (! kept.empty()) {
                         NonplanarSurface sub(kept);
