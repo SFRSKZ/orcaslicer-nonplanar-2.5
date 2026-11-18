@@ -1326,6 +1326,8 @@ PrintObject::find_nonplanar_surfaces()
             //nf.debug_output();
 
             BOOST_LOG_TRIVIAL(info) << "Find nonplanar surfaces - found " << volume_surfaces.size() << " in " << (*it)->name;
+            for (NonplanarSurface &s : volume_surfaces)
+                s.source_volume_id = (*it)->id().id;
             m_nonplanar_surfaces.insert(m_nonplanar_surfaces.end(), volume_surfaces.begin(), volume_surfaces.end());
 
             for (size_t id = 0; id < m_nonplanar_surfaces.size(); ++ id) {

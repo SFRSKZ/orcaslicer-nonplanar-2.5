@@ -9529,12 +9529,20 @@ std::string GCode::_extrude_piece(const ExtrusionPath &path, const std::string &
         constexpr double quantized_z_delta = 0.001;
         constexpr double quantized_xy_delta = 0.0014142135623730951;
         const double physical_xy = std::max(0.0, dxy - quantized_xy_delta);
-        if ((dxy < quantized_xy_delta && dz > quantized_z_delta) ||
-            (dxy >= quantized_xy_delta && dz > max_gradient * physical_xy + quantized_z_delta))
+        // A step in place of a few microns (two projections of one point on neighbouring facets)
+        // is no climb.
+        constexpr double in_place_z_delta = 0.005;
+        if ((dxy < quantized_xy_delta && dz > in_place_z_delta) ||
+            (dxy >= quantized_xy_delta && dz > max_gradient * physical_xy + quantized_z_delta)) {
+            if (std::getenv("NONPLANAR_FALLBACK_TRACE") != nullptr)
+                std::fprintf(stderr, "steep step from X%.3f Y%.3f Z%.3f to X%.3f Y%.3f Z%.3f role %s slope %.1f pts %zu\n",
+                    from.x(), from.y(), from.z(), to.x(), to.y(), to.z(), ExtrusionEntity::role_to_string(path.role()).c_str(),
+                    double(path.max_slope_deg), path.polyline.points.size());
             throw_nonplanar_too_steep(to.z(), m_layer != nullptr ? m_layer->id() : 0, m_config.nonplanar_layers_angle.value,
                 m_layer != nullptr ? m_layer->object()->id().id : 0,
                 "height step at G-code X" + std::to_string(to.x()) + " Y" + std::to_string(to.y()) + " Z" + std::to_string(to.z()) +
                 " (task " + std::to_string(path.source_path_id) + ")");
+        }
     };
     if (m_config.use_nonplanar_layers.value) {
         const size_t task_id = m_path_task_ids.emplace(path.source_path_id, m_path_task_ids.size()).first->second;

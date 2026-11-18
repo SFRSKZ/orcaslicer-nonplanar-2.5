@@ -133,6 +133,14 @@ using namespace std::literals;
 
 namespace Slic3r {
 
+// Nonplanar shells keep one outer wall width off each layer's outline, so the outer wall stays
+// planar.  NONPLANAR_PLANAR_WALL=0 turns it off (test hook).
+static bool nonplanar_planar_outer_wall()
+{
+    static const bool on = [] { const char *v = std::getenv("NONPLANAR_PLANAR_WALL"); return v == nullptr || std::strcmp(v, "0") != 0; }();
+    return on;
+}
+
 // Constructor is called from the main thread, therefore all Model / ModelObject / ModelIntance data are valid.
 PrintObject::PrintObject(Print* print, ModelObject* model_object, const Transform3d& trafo, PrintInstances&& instances) :
     PrintObjectBaseWithState(print, model_object),
@@ -2683,6 +2691,47 @@ PrintObject::detect_nonplanar_surfaces()
         layer->lslices_before_nonplanar = union_safety_offset_ex(merged);
     }
 
+    // Model volumes of each printing region: a part's own region and the regions of modifiers,
+    // painted colours and fuzzy skin inside that part.  A region shared by several volumes (same
+    // settings) belongs to all of them.
+    std::vector<std::vector<size_t>> region_volumes(this->num_printing_regions());
+    if (const PrintObjectRegions *shared = this->shared_regions()) {
+        for (const PrintObjectRegions::LayerRangeRegions &range : shared->layer_ranges) {
+            auto root_of = [&range](int idx) -> size_t {
+                for (int guard = 0; idx >= 0 && guard < 1000; ++ guard) {
+                    const PrintObjectRegions::VolumeRegion &vr = range.volume_regions[size_t(idx)];
+                    if (vr.parent < 0)
+                        return vr.model_volume != nullptr ? vr.model_volume->id().id : 0;
+                    idx = vr.parent;
+                }
+                return 0;
+            };
+            auto add = [&region_volumes](const PrintRegion *region, size_t volume_id) {
+                if (region == nullptr || volume_id == 0)
+                    return;
+                const int rid = region->print_object_region_id();
+                if (rid >= 0 && size_t(rid) < region_volumes.size())
+                    region_volumes[size_t(rid)].push_back(volume_id);
+            };
+            for (size_t i = 0; i < range.volume_regions.size(); ++ i)
+                add(range.volume_regions[i].region, root_of(int(i)));
+            for (const PrintObjectRegions::PaintedRegion &pr : range.painted_regions)
+                add(pr.region, root_of(pr.parent));
+            for (const PrintObjectRegions::FuzzySkinPaintedRegion &fr : range.fuzzy_skin_painted_regions)
+                if (fr.parent_type == PrintObjectRegions::FuzzySkinPaintedRegion::ParentType::VolumeRegion)
+                    add(fr.region, root_of(fr.parent));
+                else if (fr.parent >= 0 && size_t(fr.parent) < range.painted_regions.size())
+                    add(fr.region, root_of(range.painted_regions[size_t(fr.parent)].parent));
+        }
+    }
+    // Unknown volume or a region without a known volume: take the surface (the old behaviour).
+    auto region_takes_surface = [&region_volumes](size_t region_id, size_t volume_id) {
+        if (volume_id == 0 || region_id >= region_volumes.size() || region_volumes[region_id].empty())
+            return true;
+        const std::vector<size_t> &v = region_volumes[region_id];
+        return std::find(v.begin(), v.end(), volume_id) != v.end();
+    };
+
     for (size_t region_id = 0; region_id < this->num_printing_regions(); ++ region_id) {
         m_print->throw_if_canceled();
         BOOST_LOG_TRIVIAL(trace) << "detect_nonplanar_surfaces for region " << region_id;
@@ -2698,6 +2747,13 @@ PrintObject::detect_nonplanar_surfaces()
             all_projections.emplace_back(s.horizontal_projection());
         for (auto& nonplanar_surface: this->nonplanar_surfaces()) {
             nonplanar_surface.stable_id = stable_surface_id++;
+            // A surface's shells come from its own volume only.  Its projection reaches a few
+            // hundredths of a millimetre into a neighbouring part (two separately tessellated
+            // meshes meet there, e.g. the letter inlay in the pocket of a two-colour keycap); taking
+            // that ring out of the other part left its outline ragged and cost it a wall loop on
+            // every layer.
+            if (! region_takes_surface(region_id, nonplanar_surface.source_volume_id))
+                continue;
             // The projection is rebuilt from the mesh on every call, so compute it
             // once per surface instead of once per (shell, home layer, layer).
             const ExPolygons np_projection = nonplanar_surface.horizontal_projection();
@@ -2780,6 +2836,46 @@ PrintObject::detect_nonplanar_surfaces()
                             );
                         }
 
+                        // The layer's outer wall stays planar: the shell keeps one outer wall width off the
+                        // layer's outline, and that ring is printed as the layer's own outer wall.  A shell
+                        // reaching the outline drew the outermost line itself, at the height of the surface
+                        // edge, which runs across the planar layer lines on a dished or tapered part (a
+                        // wavy band below the top edge of a keycap).  Holes (a pocket around an inlay) are
+                        // not the outer wall and stay as they were.
+                        if (nonplanar_planar_outer_wall() && topNonplanar.size() > 0 && ! layer->lslices_before_nonplanar.empty()) {
+                            Polygons contours;
+                            for (const ExPolygon &ex : layer->lslices_before_nonplanar)
+                                contours.emplace_back(ex.contour);
+                            const float wall = 1.15f * float(layerm.flow(frExternalPerimeter).scaled_width()); // a ring of exactly one line width gets no loop
+                            // Only along a side wall: where the layer above ends within one wall width of
+                            // this layer's outline (a wall steeper than about 25°).  On a dome the outline
+                            // of each layer is the top surface itself; it stays nonplanar.
+                            Polygons keep;
+                            if (layer->upper_layer != nullptr && ! layer->upper_layer->lslices_before_nonplanar.empty()) {
+                                Polygons upper_contours;
+                                for (const ExPolygon &ex : layer->upper_layer->lslices_before_nonplanar)
+                                    upper_contours.emplace_back(ex.contour);
+                                const ExPolygons outline = union_ex(contours);
+                                keep = intersection(to_polygons(diff_ex(outline, offset_ex(outline, -wall))),
+                                                    to_polygons(offset_ex(union_ex(upper_contours), wall)));
+                            }
+                            if (! keep.empty()) {
+                                SurfaceCollection clipped;
+                                // Slivers left between the clip and the projection's edge (corners) are
+                                // narrower than a line; they stay planar.
+                                for (const Surface &piece : topNonplanar.surfaces)
+                                    clipped.append(opening_ex(diff_ex_2(to_polygons(piece.expolygon), keep), 0.5f * wall), piece);
+                                topNonplanar = std::move(clipped);
+                            }
+                        }
+
+                        // Hairline pieces are left planar.  The projection of a surface and the outline
+                        // of another part meet along two separately tessellated meshes, so the projection
+                        // overlaps the neighbouring part (the letter inlay in the pocket of a two-colour
+                        // keycap) by a few hundredths of a millimetre.  Taking that ring out of the part
+                        // left its outline ragged and cost it a wall loop on every layer.  Real strips are
+                        // at least a layer height / tan(angle) wide; only pieces that vanish entirely
+                        // under the opening are dropped, the others are kept unchanged.
                         // Material already assigned to a shell keeps its first owner.
                         // A second claim on the same area would print it twice.
                         if (topNonplanar.size() > 0) {
@@ -2985,6 +3081,20 @@ PrintObject::detect_nonplanar_surfaces()
                                                                to_polygons(diff_ex(outline, offset_ex(outline, -float(scale_(reach))))));
                             if (! covered.empty())
                                 ext = diff_ex_2(to_polygons(ext), covered);
+                            // The shell prints this remainder at about the top of the source layer, but
+                            // the source outline is sliced half a layer lower.  Where the wall leans inwards
+                            // (a tapered keycap, the fillet along a top edge) the shell then stuck out of the
+                            // model by up to a layer's taper (0.1 mm per side on a 0.2 mm nozzle keycap).
+                            // The layer above is sliced half a layer higher: its outline keeps the shell
+                            // inside the model, and the thin ring outside it stays planar on this layer.
+                            if (! ext.empty() && source->upper_layer != nullptr && ! source->upper_layer->lslices_before_nonplanar.empty()) {
+                                Polygons cap;
+                                for (const ExPolygon &ex : source->upper_layer->lslices_before_nonplanar)
+                                    cap.emplace_back(ex.contour);
+                                // With a planar outer wall the shell also stops one wall width inside.
+                                const float wall = nonplanar_planar_outer_wall() ? 1.15f * float(source_layerm.flow(frExternalPerimeter).scaled_width()) : 0.f;
+                                ext = intersection_ex_2(to_polygons(ext), to_polygons(offset_ex(union_ex(cap), -wall)));
+                            }
                             const ExPolygons ext_all = ext;
                             expolygons_append(shell_ext_all, ext);
                             ExPolygons taken;

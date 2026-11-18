@@ -47,6 +47,9 @@ class NonplanarSurface
     bool       has_origin = false;
     mesh_stats origin_stats {};
     int stable_id = -1;
+    // Model volume whose top this surface is (ObjectID value, compared only); 0 = unknown.
+    // Its shells are taken only from the regions of that volume (PrintObject::detect_nonplanar_surfaces).
+    size_t source_volume_id = 0;
     NonplanarSurface() {};
     ~NonplanarSurface() {};
     NonplanarSurface(std::map<int, NonplanarFacet> &_mesh);

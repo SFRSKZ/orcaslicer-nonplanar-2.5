@@ -412,6 +412,8 @@ double nonplanar_suggested_angle(double angle)
 void throw_nonplanar_too_steep(double z, size_t layer_id, double angle, size_t object_id, const std::string &detail)
 {
     BOOST_LOG_TRIVIAL(error) << "Nonplanar surface too steep" << nonplanar_location(z, layer_id) << ": " << detail;
+    if (std::getenv("NONPLANAR_FALLBACK_TRACE") != nullptr)
+        std::fprintf(stderr, "nonplanar too steep%s: %s\n", nonplanar_location(z, layer_id).c_str(), detail.c_str());
     char buf[400];
     std::snprintf(buf, sizeof(buf), "Nonplanar slicing failed%s: a nonplanar line would have to climb more than 12° there "
         "(a sharp edge or step in the surface). Lower \"Maximum nonplanar angle\" to %g° or less and slice again.",
