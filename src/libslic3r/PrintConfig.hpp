@@ -1373,6 +1373,7 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionFloat,               nonplanar_layers_angle))
     ((ConfigOptionFloat,               nonplanar_layers_height))
     ((ConfigOptionBool,                nonplanar_edge_fix))
+    ((ConfigOptionBool,                nonplanar_lower_angle))
     ((ConfigOptionBool,                nonplanar_ironing))
     ((ConfigOptionPercent,             nonplanar_ironing_flow))
     ((ConfigOptionFloat,               nonplanar_ironing_spacing))

@@ -3389,7 +3389,7 @@ bool Print::nonplanar_fallback(const SlicingError &error)
         [&](const PrintObject::NonplanarFallback &f) { return same_stats(f.stats, fallback.stats); });
     const double current = entry != object->m_nonplanar_fallbacks.end() ? entry->angle : configured;
     const double next    = nonplanar_suggested_angle(current);
-    fallback.angle = m_nonplanar_angle_ladder && next >= 4. - EPSILON && next < current - EPSILON ? next : 0.;
+    fallback.angle = m_nonplanar_angle_ladder && object->config().nonplanar_lower_angle.value && next >= 4. - EPSILON && next < current - EPSILON ? next : 0.;
     if (std::getenv("NONPLANAR_FALLBACK_TRACE") != nullptr)
         std::fprintf(stderr, "nonplanar fallback surface z %.2f..%.2f bbox %.1f,%.1f..%.1f,%.1f: angle %g -> %g%s\n", fallback.stats.min.z, fallback.stats.max.z,
             fallback.stats.min.x, fallback.stats.min.y, fallback.stats.max.x, fallback.stats.max.y, current, fallback.angle, fallback.angle > 0. ? "" : " (planar)");

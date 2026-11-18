@@ -5297,10 +5297,19 @@ void PrintConfigDef::init_fff_params()
     def->mode = comAdvanced;
     def->set_default_value(new ConfigOptionBool(true));
 
+    def = this->add("nonplanar_lower_angle", coBool);
+    def->label = L("Lower the angle on collision (experimental)");
+    def->category = L("Quality");
+    def->tooltip = L("When a nonplanar surface would hit the hotend, try it again at a lower maximum angle (10°, 8°, 6°, 4°) "
+                     "instead of printing the whole surface planar. Its steeper parts are then printed planar. "
+                     "Each try slices the object again, so slicing takes longer.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(false));
+
     // Nonplanar ironing: the flat nozzle tip is placed on the highest surface point
     // under it, so on a slope only its uphill edge touches and nothing is gouged.
     def = this->add("nonplanar_ironing", coBool);
-    def->label = L("Nonplanar ironing");
+    def->label = L("Nonplanar ironing (experimental)");
     def->category = L("Quality");
     def->tooltip = L("Iron the visible nonplanar top shell along the surface with a very low flow. "
                      "The nozzle tip never goes below the surface: on a slope only its uphill edge touches.");

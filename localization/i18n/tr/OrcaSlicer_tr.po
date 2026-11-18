@@ -39181,8 +39181,14 @@ msgstr "Nonplanar kenar düzeltmesi"
 msgid "Extend the nonplanar top shells to the model's outer edge so no gap or notch is left where planar layers meet the nonplanar surface."
 msgstr "Nonplanar üst kabukları modelin dış kenarına kadar uzatır; böylece düzlemsel katmanların nonplanar yüzeyle buluştuğu yerde boşluk veya çentik kalmaz."
 
-msgid "Nonplanar ironing"
-msgstr "Nonplanar ütüleme"
+msgid "Nonplanar ironing (experimental)"
+msgstr "Nonplanar ütüleme (deneysel)"
+
+msgid "Lower the angle on collision (experimental)"
+msgstr "Çarpışmada açıyı düşür (deneysel)"
+
+msgid "When a nonplanar surface would hit the hotend, try it again at a lower maximum angle (10°, 8°, 6°, 4°) instead of printing the whole surface planar. Its steeper parts are then printed planar. Each try slices the object again, so slicing takes longer."
+msgstr "Bir nonplanar yüzey hotend'e çarpacaksa, yüzeyin tamamını düz basmak yerine daha düşük bir en büyük açıyla (10°, 8°, 6°, 4°) yeniden dener. Yüzeyin daha dik kısımları düz basılır. Her deneme nesneyi yeniden dilimlediği için dilimleme uzar."
 
 msgid "Iron the visible nonplanar top shell along the surface with a very low flow. The nozzle tip never goes below the surface: on a slope only its uphill edge touches."
 msgstr "Görünen nonplanar üst kabuğu, yüzeyi izleyerek çok düşük akışla ütüler. Nozül ucu hiçbir zaman yüzeyin altına inmez: eğimde ucun yalnızca yokuş yukarı kenarı değer."

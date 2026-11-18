@@ -1373,6 +1373,7 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig *config, in
     // shells, so they are only meaningful while nonplanar layers are enabled.
     const bool nonplanar_on = config->has("use_nonplanar_layers") && config->opt_bool("use_nonplanar_layers");
     toggle_line("nonplanar_edge_fix", nonplanar_on);
+    toggle_line("nonplanar_lower_angle", nonplanar_on);
     toggle_line("nonplanar_ironing", nonplanar_on);
     const bool nonplanar_ironing_on = nonplanar_on && config->has("nonplanar_ironing") && config->opt_bool("nonplanar_ironing");
     for (const char *key : { "nonplanar_ironing_flow", "nonplanar_ironing_spacing", "nonplanar_ironing_max_angle", "nonplanar_ironing_z_offset", "nonplanar_ironing_slope_press", "nonplanar_ironing_cross", "nonplanar_ironing_tip_diameter", "nonplanar_ironing_min_area" })

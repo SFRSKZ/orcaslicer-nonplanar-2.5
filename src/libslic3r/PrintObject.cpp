@@ -1871,7 +1871,8 @@ bool PrintObject::invalidate_state_by_config_options(
                opt_key == "use_nonplanar_layers"
             || opt_key == "nonplanar_layers_angle"
             || opt_key == "nonplanar_layers_height"
-            || opt_key == "nonplanar_edge_fix") {
+            || opt_key == "nonplanar_edge_fix"
+            || opt_key == "nonplanar_lower_angle") {
             steps.emplace_back(posSlice);
         } else if (
                 opt_key == "wall_generator"

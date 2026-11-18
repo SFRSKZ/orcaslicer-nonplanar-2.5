@@ -1514,7 +1514,7 @@ static std::vector<std::string> s_Preset_print_options{
     "imex_parallel_mode",
     "imex_head_filament_map",
     // Nonplanar top shells
-    "use_nonplanar_layers", "nonplanar_layers_angle", "nonplanar_layers_height", "nonplanar_edge_fix",
+    "use_nonplanar_layers", "nonplanar_layers_angle", "nonplanar_layers_height", "nonplanar_edge_fix", "nonplanar_lower_angle",
     "nonplanar_ironing", "nonplanar_ironing_flow", "nonplanar_ironing_spacing", "nonplanar_ironing_max_angle", "nonplanar_ironing_z_offset", "nonplanar_ironing_slope_press", "nonplanar_ironing_cross", "nonplanar_ironing_tip_diameter", "nonplanar_ironing_min_area",
     "set_nonplanar_top_surface_flow_ratio", "nonplanar_top_surface_flow_ratio",
     "set_nonplanar_top_surface_direction", "nonplanar_top_surface_direction",
