@@ -1,3 +1,24 @@
+# OrcaSlicer Nonplanar 2.5
+
+This is OrcaSlicer 2.5.0 with **nonplanar top surfaces**. Gently curved tops are printed in layers that follow the shape of the model, so they don't show the stair-step lines of flat layers.
+
+![Planar layers vs nonplanar top surfaces](doc/nonplanar/bunny-planar-vs-nonplanar.png)
+
+*Right: the patch on the back is printed nonplanar with the default settings. The patch on top of the head needs the experimental "Lower the angle on collision" option (it is printed at 8° instead of 12°).*
+
+- **Nonplanar top surfaces.** Turn on *Nonplanar layers* and set the *Maximum nonplanar angle*. Tops that are flatter than that angle are printed nonplanar.
+- **Hotend collision planning.** The print order is planned against a model of the hotend, so the nozzle never drives into material that is already printed. Layers that have to wait are shown as *deferred planar* in the preview.
+- **Lowering the angle on collision (experimental, off by default).** Without it, a surface that can't be printed without a collision is printed planar. With *Lower the angle on collision* on, it is tried again at a lower angle (10°, 8°, 6°, 4°). The steeper parts of that surface are then printed planar, and the edge of what stays nonplanar is smoothed. Only a surface that still collides at 4° is printed fully planar. A warning says which surface was changed.
+- **Nonplanar ironing (experimental).** Ironing that follows the curved top surface.
+
+Windows installers are on the Releases page.
+
+Credits: the nonplanar work builds on [fich-l/orcaslicer-nonplanar](https://github.com/fich-l/orcaslicer-nonplanar), which is based on [OrcaSlicer](https://github.com/OrcaSlicer/OrcaSlicer). It is licensed under AGPL-3.0, like OrcaSlicer.
+
+The original OrcaSlicer README follows.
+
+---
+
 <div align="center">
 
 <picture>
