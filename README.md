@@ -9,6 +9,8 @@ This is OrcaSlicer 2.5.0 with **nonplanar top surfaces**. Gently curved tops are
 - **Nonplanar top surfaces.** Turn on *Nonplanar layers* and set the *Maximum nonplanar angle*. Tops that are flatter than that angle are printed nonplanar.
 - **Hotend collision planning.** The print order is planned against a model of the hotend, so the nozzle never drives into material that is already printed. Layers that have to wait are shown as *deferred planar* in the preview.
 - **Lowering the angle on collision (experimental, off by default).** Without it, a surface that can't be printed without a collision is printed planar. With *Lower the angle on collision* on, it is tried again at a lower angle (10°, 8°, 6°, 4°). The steeper parts of that surface are then printed planar, and the edge of what stays nonplanar is smoothed. Only a surface that still collides at 4° is printed fully planar. A warning says which surface was changed.
+- **Planar outer wall.** Along side walls, the nonplanar shells stay inside the outer wall, so the visible side keeps straight layer lines. Domes keep their nonplanar outline.
+- **Failing surfaces are printed planar.** A surface that collides or climbs too steeply no longer stops the slice; it is printed planar and a warning names it.
 - **Nonplanar ironing (experimental).** Ironing that follows the curved top surface.
 
 Windows installers are on the Releases page.
